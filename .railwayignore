@@ -1,0 +1,9 @@
+.env
+.env.*
+data/
+logs/
+__pycache__/
+tests/
+redteam/results/
+.pytest_cache/
+.venv/

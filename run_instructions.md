@@ -1,47 +1,48 @@
-# Run Instructions (Local, Safe)
+# Local run instructions
 
-## Prereqs
-- Python 3.10+
-- pip
+Python 3.12 is the tested runtime. Start from the repository root:
 
-## Install
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-## Start server
-uvicorn app.main:app --reload --port 8000
-
-## Endpoints
-- POST /tasks -> submit a task for the agent to plan and (safely) simulate execution
-- GET /logs -> view structured JSON logs (for demo)
-- POST /tests/rt-01 -> run a safe red-team simulation (hallucination detection) in sandbox
-
-All tests are safe, local-only, and use canned test data.
-
-## Auto-demo walkthrough script (`run_demo.py`)
-
-This repository includes a convenience walkthrough script `run_demo.py` that will call the local demo endpoints and collect sanitized evidence results in `redteam/results/`.
-
-### Usage
-
-1. Ensure you are in the project root (where `app/`, `run_instructions.md` are located).
-2. Create and activate a Python virtual environment, install deps, and `requests`:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt requests
+```sh
+./start.sh
 ```
-3. Run the demo script. If you already started the server separately (via `uvicorn app.main:app --reload --port 8000`), run:
-```bash
-python run_demo.py --base-url http://localhost:8000
-```
-Alternatively, let the script start the dev server for you (development only):
-```bash
-python run_demo.py --base-url http://localhost:8000 --start-server
-```
-4. After completion, evidence will be saved under `redteam/results/collected_evidence_<ts>.json`.
 
-**Notes & safety:** The script only calls local endpoints in this starter repo and redacts obvious tokens before saving evidence. Do not use `--start-server` on production systems.
+The launcher installs the locked dependencies into `.venv` if the environment is
+missing, starts on loopback port 8000, then opens the workspace with the one-time
+setup key in the URL fragment. The fragment is removed by the page and is not
+sent in HTTP requests. Choose an administrator password of 15–128 characters.
 
----
+For manual setup:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock.txt
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+In a second terminal, open the private setup link:
+
+```sh
+.venv/bin/python manage.py open
+```
+
+The app is at `http://localhost:8000`. Use that hostname consistently; cookies
+and origin checks intentionally distinguish `localhost` from `127.0.0.1`.
+
+From the repository root, run all tests with `.venv/bin/python -m pytest -q`.
+The lock file includes the development test dependencies used in verification.
+All accounts, sessions, records, vectors, balances and evidence are persisted in
+`data/refundguard.sqlite3`. That directory is ignored by Git.
+
+To collect evidence from a running app, use `run_demo.py` with your own account.
+Passwords are entered interactively and never placed in command arguments:
+
+```sh
+.venv/bin/python run_demo.py
+# Optionally process an existing synthetic case before collecting evidence:
+.venv/bin/python run_demo.py --case-id RG-YOURCASE
+```
+
+For API usage: log in at `/api/auth/login` with JSON and the configured `Origin`.
+Keep the returned HttpOnly session cookie; include the returned `csrf` as
+`X-CSRF-Token` on every authenticated mutation. No browser tokens are stored in
+localStorage. The browser UI handles these details automatically.
