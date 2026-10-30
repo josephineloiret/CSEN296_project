@@ -1,4 +1,4 @@
-# Local run instructions
+# Local development
 
 Python 3.12 is the tested runtime. Start from the repository root:
 
@@ -28,19 +28,36 @@ In a second terminal, open the private setup link:
 The app is at `http://localhost:8000`. Use that hostname consistently; cookies
 and origin checks intentionally distinguish `localhost` from `127.0.0.1`.
 
-From the repository root, run all tests with `.venv/bin/python -m pytest -q`.
-The lock file includes the development test dependencies used in verification.
+## Checks and demos
+
+The lock file includes the development test dependencies. From the repository root:
+
+```sh
+.venv/bin/python -m pytest -q
+.venv/bin/python scripts/scan_secrets.py
+.venv/bin/python -m scripts.refund_demo
+.venv/bin/python redteam/run_campaign.py --out redteam/results/campaign-local.json
+```
+
+The refund demo and local campaign use disposable databases. Campaign output is
+ignored by Git. Live campaign mode requires explicit `--live` and provider setup;
+see [configuration](setup-and-deployment.md) before enabling paid requests.
+
+## Local state and evidence
+
 All accounts, sessions, records, vectors, balances and evidence are persisted in
 `data/refundguard.sqlite3`. That directory is ignored by Git.
 
-To collect evidence from a running app, use `run_demo.py` with your own account.
+To collect evidence from a running app, use the `scripts.export_evidence` module with your own account.
 Passwords are entered interactively and never placed in command arguments:
 
 ```sh
-.venv/bin/python run_demo.py
+.venv/bin/python -m scripts.export_evidence
 # Optionally process an existing synthetic case before collecting evidence:
-.venv/bin/python run_demo.py --case-id RG-YOURCASE
+.venv/bin/python -m scripts.export_evidence --case-id RG-YOURCASE
 ```
+
+## API usage
 
 For API usage: log in at `/api/auth/login` with JSON and the configured `Origin`.
 Keep the returned HttpOnly session cookie; include the returned `csrf` as

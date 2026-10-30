@@ -1,98 +1,80 @@
 # RefundGuard
 
-RefundGuard is the team's COEN/CSEN 296 customer-support and AI-assurance project.
-It extends this repository's original starter with a browser workspace, five
-specialist agents, scoped retrieval, and independently enforced mock refunds.
-All customer records, balances, and email delivery are synthetic.
+A customer-support sandbox with five specialist agents, scoped policy retrieval,
+and independently enforced mock refunds. Customer records, balances and email
+are synthetic. Local simulation runs without an API key or provider charges.
 
-## Run locally
+## Quick start
 
-Python 3.12 is the tested runtime. From the repository root:
+Use Python 3.12 and run these commands from the repository root:
 
 ```sh
 ./start.sh
 ```
 
-The launcher installs the locked dependencies if needed, starts the server at
-`http://localhost:8000`, and opens a private first-time setup link. Choose your own
-administrator name, email, and password. Keep the terminal running; Ctrl+C stops
-the server. To reopen setup or the existing workspace:
+The launcher installs locked dependencies into `.venv`, starts the app at
+`http://localhost:8000`, and opens first-time administrator setup. Choose your own
+name, email and password. Keep the terminal running; Ctrl+C stops the server.
+To reopen an existing workspace, run `.venv/bin/python manage.py open`.
 
-```sh
-.venv/bin/python manage.py open
-```
+Invite teammates under **Team**. Individual invitations bind an email and role;
+a shared admin link permits four signups within 48 hours. Share links privately.
+Production administrators and supervisors must enroll an authenticator.
 
-No default/shared password exists. Invite teammates under **Team**. Individual
-invitations bind an email and role. A **Shared admin link** permits four people
-to choose their own name, email, and password within 48 hours; anyone holding it
-gets full admin access. Share it privately. Production administrators/supervisors
-must enroll an authenticator and save their single-use recovery codes.
+## Try a refund
 
-See [run instructions](run_instructions.md) and the [user guide](docs/user-guide.md).
+1. Open **New case** and select Maya's recent $75 headphones purchase.
+2. Choose the damaged-item reason, create the case, and run the agent workflow.
+3. Inspect the recommendation, trusted control decision, ledger outcome and inbox.
+4. Try an over-limit case or pause authority, then compare the result.
 
-## Try the workflow
+Trusted controls limit autonomous refunds to $100 per transaction and $500 per
+organization per UTC week. Policy uploads require a different reviewer's approval.
 
-1. Create your administrator account and open **New case**.
-2. Select Maya's recent $75 headphones purchase and the damaged-item reason.
-3. Create the case, then select **Run agent workflow**.
-4. Inspect the recommendation, independent control decision, ledger outcome,
-   mailbox, and agent evidence.
-5. Try an over-limit/expired case, pause authority, or run the isolated checks
-   under **Assurance**.
+## Repository map
 
-The autonomous limits are $100 per transaction and $500 organization-wide per
-UTC calendar week. Policies and customer messages cannot change trusted code
-controls. Uploaded policy versions need a different administrator/supervisor's
-approval before retrieval; approved prior versions can be restored.
+| Location | Purpose |
+| --- | --- |
+| [`app/`](app/) | API, agent workflow, trusted controls, persistence and browser UI |
+| [`tests/`](tests/) | Application, refund, hardening and deployment regression tests |
+| [`scripts/`](scripts/) | Evidence export, refund demo and CI utilities |
+| [`redteam/`](redteam/) | Isolated synthetic attack campaign and ignored local results |
+| [`deploy/`](deploy/) | Railway configuration template, service settings and public checks |
+| [`docs/`](docs/) | Development, usage, configuration and operating instructions |
+| [`examples/starter/`](examples/starter/) | Archived starter modules for reference |
+| [`manage.py`](manage.py) | Setup links, account recovery, usage and backup commands |
+| [`start.sh`](start.sh) / [`Dockerfile`](Dockerfile) | Local launcher and container build |
 
-## Local simulation and live models
-
-Default local simulation requires no API key, downloads, or provider charges.
-It uses deterministic specialists and persistent 384-dimensional lexical hash
-vectors in SQLite; these are not learned semantic embeddings or a live LLM test.
-
-For live structured generation and learned embeddings, copy `.env.example` to
-`.env`, configure your server-side key/model/budgets, and restart. Secrets,
-databases, keys, and backups are ignored by Git. See the
-[setup guide](docs/setup-and-deployment.md).
-
-## Verification
+## Development and checks
 
 ```sh
 .venv/bin/python -m pytest -q
 .venv/bin/python scripts/scan_secrets.py
+.venv/bin/python -m scripts.refund_demo
 .venv/bin/python redteam/run_campaign.py --out redteam/results/campaign-local.json
 ```
 
-Campaign output is written to the ignored `redteam/results/` directory.
+The refund demo and default campaign use disposable synthetic data. Campaign
+output is ignored by Git. See [local development](docs/local-development.md) for
+manual startup, authenticated evidence export and API usage.
 
-GitHub Actions runs tests, credential-pattern checks, dependency auditing, a
-Docker build, and a Trivy image scan. The container gate excludes findings without
-available fixes (`--ignore-unfixed`); this does not patch those vulnerabilities.
-Review its results before merging.
+GitHub Actions runs tests, secret scans, dependency auditing, a Docker build and
+Trivy. The container gate fails on HIGH/CRITICAL findings with available fixes;
+`--ignore-unfixed` excludes other findings without patching those vulnerabilities.
 
-## Operating instructions
+## Guides
 
-- [Blue-team operations and recovery](docs/blue-team-runbook.md)
-- [Setup and configuration](docs/setup-and-deployment.md)
-- [Application layout](docs/application-layout.md)
-- [Repository integration notes](docs/repository-integration.md)
+Start with the [documentation index](docs/README.md), or go directly to:
 
-Team repository: https://github.com/josephineloiret/CSEN296_project.
-The original [starter README](docs/starter-readme.md) and starter agent/retriever
-reference modules are retained. The active application uses `workflow.py` and
-`knowledge.py`; the unauthenticated starter `/tasks`, `/logs`, and canned attack
-endpoints have been replaced by authenticated workflows and isolated evaluation.
+- [Using the workspace](docs/user-guide.md)
+- [Configuration and account management](docs/setup-and-deployment.md)
+- [Application modules and request flow](docs/application-layout.md)
+- [Security operations and recovery](docs/blue-team-runbook.md)
+- [Railway deployment](docs/railway-deployment.md)
 
-## Deployment
+For optional live models, copy `.env.example` to `.env`, configure the server-side
+key and budgets, and restart. See the configuration guide for data handling and
+usage limits.
 
-The existing demonstration is hosted on Railway:
-https://refundguard-production-11cb.up.railway.app/.
-Its database and settings are independent of a local checkout. This integration
-adds code to the team repository; it does not switch the existing Railway service
-to GitHub autodeploy. Build this repository from its root `Dockerfile` with one
-worker/replica and a persistent `/data` volume. Read
-[the deployment runbook](docs/railway-deployment.md) before changing hosting.
-
-Off-site log/backup retention, hosting/provider-owner MFA, and review of
-outstanding container advisories remain operator work. Do not place private invitation URLs in this repository.
+The existing [Railway demo](https://refundguard-production-11cb.up.railway.app/)
+uses separate runtime data. Source changes in this branch do not redeploy it.

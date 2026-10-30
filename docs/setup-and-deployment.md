@@ -1,4 +1,4 @@
-# Setup, account recovery and deployment
+# Setup and configuration
 
 ## First administrator
 
@@ -29,13 +29,12 @@ actual teammate's email and select a role:
 | Supervisor | Member permissions plus policy indexing, supervisor decisions, authority pause/restore and evidence export |
 | Administrator | Supervisor permissions plus invitations and account enable/disable |
 
-Names from the initial team list are not automatically enrolled: email addresses
-and approved roles were not supplied. The team role suggestions in the proposal
-are not enforced account assignments. Invitations are generated locally; the app
-does not send real email. Share each private link yourself through your preferred
-channel. Invitation links bind the intended email/role, expire after 48 hours,
-and become invalid after use or replacement. Possession of a link authorizes
-acceptance, so protect it like a temporary password.
+Invitations are generated in the app; it does not send real email. Share each
+private link through your chosen channel. Individual invitations bind the
+intended email and role, expire after 48 hours, and become invalid after use or
+replacement. Shared administrator links allow four people to choose their own
+name, email and password within 48 hours. Anyone holding an active shared link
+can claim administrator access, so keep it private and revoke it after use.
 
 Each person chooses their own passphrase. Session identifiers are random,
 server-side, stored as hashes in SQLite, sent in HttpOnly/SameSite=Strict cookies,
@@ -46,7 +45,7 @@ Password changes require the current password and invalidate all prior sessions.
 
 Production administrators and supervisors must enroll and verify TOTP MFA.
 Email ownership verification, self-service password-reset email and enterprise
-SSO are not implemented. See blue-team-runbook.md for MFA and recovery details.
+SSO are not implemented. See the [blue-team runbook](blue-team-runbook.md) for MFA and recovery details.
 
 ## Local password recovery
 

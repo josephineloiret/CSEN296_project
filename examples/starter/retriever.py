@@ -2,9 +2,9 @@
 class Retriever:
     def __init__(self):
         self.store = {
-            'expense': 'Expense policy: claims under $100 auto-approve.',
-            'deploy': 'Deploy checklist: run tests, backup db, apply migration.',
-            'portfolio': 'Portfolio guide: diversify across assets.'
+            "expense": "Expense policy: claims under $100 auto-approve.",
+            "deploy": "Deploy checklist: run tests, backup db, apply migration.",
+            "portfolio": "Portfolio guide: diversify across assets.",
         }
 
     def get_context(self, key):
