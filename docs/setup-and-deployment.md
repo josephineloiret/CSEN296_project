@@ -2,7 +2,7 @@
 
 ## First administrator
 
-Run `./start.sh` from the repository root. It opens a browser setup link carrying
+Run `./scripts/start.sh` from the repository root. It opens a browser setup link carrying
 an unguessable one-time token from `data/setup-token`. Only the token
 holder can create the initial administrator; creation is serialized and disables
 setup permanently. The setup file is deleted after success. No administrator
@@ -11,10 +11,10 @@ password is preconfigured, logged or stored in plaintext.
 If a server is already running, use:
 
 ```sh
-.venv/bin/python manage.py open
+.venv/bin/python -m scripts.manage open
 ```
 
-`manage.py setup-link` prints the link instead of opening it. Treat it as a
+`python -m scripts.manage setup-link` prints the link instead of opening it. Treat it as a
 private, temporary credential. Do not commit or share the data directory.
 
 ## Team accounts
@@ -52,7 +52,7 @@ SSO are not implemented. See the [blue-team runbook](blue-team-runbook.md) for M
 The machine/database administrator can run:
 
 ```sh
-.venv/bin/python manage.py reset-password --email person@example.com
+.venv/bin/python -m scripts.manage reset-password --email person@example.com
 ```
 
 The new password is entered interactively with hidden input. All sessions for
@@ -61,7 +61,7 @@ password-reset endpoint.
 
 ## Enable real model calls later
 
-Copy `.env.example` to `.env` and edit it locally:
+Copy `config/local.env.example` to `.env` and edit it locally:
 
 ```dotenv
 APP_ENV=development
@@ -90,7 +90,7 @@ request estimate before each provider call, enforcing the configured daily and
 monthly limits across concurrent requests and restarts. Provider-reported token
 usage reconciles successful calls; unknown/failed calls retain reservations.
 These controls use documented rates and are not a provider billing guarantee.
-Inspect usage with the authenticated `/api/usage` endpoint or `manage.py usage`.
+Inspect usage with the authenticated `/api/usage` endpoint or `python -m scripts.manage usage`.
 The key is never returned in those responses. Only staff can trigger paid tools;
 customer intake and account creation do not call OpenAI.
 
@@ -129,7 +129,7 @@ HTTPS scheme headers only from trusted proxy addresses, e.g. Uvicorn
 requests, sets Secure cookies and HSTS, and requires the configured host/origin.
 Use the same origin for frontend/API and do not open permissive CORS.
 
-Generate/open the bootstrap link with `manage.py` inside the deployed environment;
+Generate/open the bootstrap link with `python -m scripts.manage open` inside the deployed environment;
 it uses the configured public origin. Invite links generated before changing the
 origin must be regenerated for the new deployment.
 

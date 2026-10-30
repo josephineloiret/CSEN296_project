@@ -1,10 +1,10 @@
 #!/bin/sh
 set -eu
-WORKSPACE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+WORKSPACE_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$WORKSPACE_DIR"
 if [ ! -x .venv/bin/python ]; then
   python3 -m venv .venv
-  .venv/bin/python -m pip install -r requirements.lock.txt
+  .venv/bin/python -m pip install -r requirements/lock.txt
 fi
 if .venv/bin/python -c 'import json, urllib.request
 try:
@@ -12,7 +12,7 @@ try:
     raise SystemExit(0 if response.get("application") == "refundguard" else 1)
 except OSError:
     raise SystemExit(1)' 2>/dev/null; then
-  .venv/bin/python manage.py open
+  .venv/bin/python -m scripts.manage open
   exit 0
 fi
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
@@ -28,5 +28,5 @@ for attempt in range(40):
         time.sleep(0.25)
 else:
     raise SystemExit("The local server did not start. Check the terminal output.")'
-.venv/bin/python manage.py open
+.venv/bin/python -m scripts.manage open
 wait "$REFUNDGUARD_SERVER_PID"

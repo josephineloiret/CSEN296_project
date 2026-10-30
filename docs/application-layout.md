@@ -22,12 +22,14 @@ writing a ledger outcome. Model output cannot bypass those controls.
 
 ## Entry points and supporting files
 
-- `start.sh`: starts the local server and opens setup or the existing workspace.
-- `manage.py`: trusted local setup, account recovery, usage and backup operations.
-- `entrypoint.py`: prepares container volume ownership and starts one worker as UID 10001.
-- `scripts/`: evidence export, a standalone refund demo and security CI helpers.
+- `scripts/start.sh`: starts the local server and opens setup or the existing workspace.
+- `scripts/manage.py`: trusted local setup, account recovery, usage and backup operations.
+- `deploy/entrypoint.py`: prepares container volume ownership and starts one worker as UID 10001.
+- `scripts/`: the launcher, local administration, evidence export, demos and CI helpers.
 - `deploy/`: nonsecret hosting configuration and credential-free public checks.
-- `tests/`: regression coverage for application behavior and security boundaries.
+- `tests/`: regression tests and their `pytest.ini` configuration.
+- `requirements/`: runtime/development specifications and pinned dependencies.
+- `config/`: local environment template; private values belong in the ignored root `.env`.
 - `examples/starter/`: original demonstration modules, separate from the active app.
 
 Local runtime state belongs in the ignored `data/` directory. Test fixtures and

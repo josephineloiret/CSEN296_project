@@ -9,13 +9,13 @@ are synthetic. Local simulation runs without an API key or provider charges.
 Use Python 3.12 and run these commands from the repository root:
 
 ```sh
-./start.sh
+./scripts/start.sh
 ```
 
 The launcher installs locked dependencies into `.venv`, starts the app at
 `http://localhost:8000`, and opens first-time administrator setup. Choose your own
 name, email and password. Keep the terminal running; Ctrl+C stops the server.
-To reopen an existing workspace, run `.venv/bin/python manage.py open`.
+To reopen an existing workspace, run `.venv/bin/python -m scripts.manage open`.
 
 Invite teammates under **Team**. Individual invitations bind an email and role;
 a shared admin link permits four signups within 48 hours. Share links privately.
@@ -37,18 +37,18 @@ organization per UTC week. Policy uploads require a different reviewer's approva
 | --- | --- |
 | [`app/`](app/) | API, agent workflow, trusted controls, persistence and browser UI |
 | [`tests/`](tests/) | Application, refund, hardening and deployment regression tests |
-| [`scripts/`](scripts/) | Evidence export, refund demo and CI utilities |
+| [`scripts/`](scripts/) | Local launcher, administration, evidence export, demos and CI utilities |
 | [`redteam/`](redteam/) | Isolated synthetic attack campaign and ignored local results |
-| [`deploy/`](deploy/) | Railway configuration template, service settings and public checks |
+| [`deploy/`](deploy/) | Docker build, container entrypoint, Railway settings and public checks |
 | [`docs/`](docs/) | Development, usage, configuration and operating instructions |
 | [`examples/starter/`](examples/starter/) | Archived starter modules for reference |
-| [`manage.py`](manage.py) | Setup links, account recovery, usage and backup commands |
-| [`start.sh`](start.sh) / [`Dockerfile`](Dockerfile) | Local launcher and container build |
+| [`config/`](config/) | Local environment template |
+| [`requirements/`](requirements/) | Runtime, development and locked Python dependencies |
 
 ## Development and checks
 
 ```sh
-.venv/bin/python -m pytest -q
+.venv/bin/python -m pytest -c tests/pytest.ini -q
 .venv/bin/python scripts/scan_secrets.py
 .venv/bin/python -m scripts.refund_demo
 .venv/bin/python redteam/run_campaign.py --out redteam/results/campaign-local.json
@@ -72,8 +72,8 @@ Start with the [documentation index](docs/README.md), or go directly to:
 - [Security operations and recovery](docs/blue-team-runbook.md)
 - [Railway deployment](docs/railway-deployment.md)
 
-For optional live models, copy `.env.example` to `.env`, configure the server-side
-key and budgets, and restart. See the configuration guide for data handling and
+For optional live models, copy `config/local.env.example` to `.env`, configure
+the server-side key and budgets, and restart. See the configuration guide for data handling and
 usage limits.
 
 The existing [Railway demo](https://refundguard-production-11cb.up.railway.app/)

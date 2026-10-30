@@ -1,3 +1,4 @@
+.git
 .env
 .env.*
 .venv
@@ -6,3 +7,7 @@ logs
 __pycache__
 redteam/results
 tests
+tmp
+docs
+examples
+.pytest_cache

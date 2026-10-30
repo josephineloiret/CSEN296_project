@@ -9,14 +9,16 @@ for current deployment status.
 
 ## Configuration
 
-Use the repository root as build context and `Dockerfile` as the build file.
+Use the repository root as build context and `deploy/Dockerfile` as the build file.
+Set `RAILWAY_DOCKERFILE_PATH=deploy/Dockerfile` in Railway service variables
+before deploying this layout; see the [custom Dockerfile path instructions](https://docs.railway.com/builds/dockerfiles).
 The nonsecret settings snapshot lives in [`deploy/`](../deploy/), alongside
 [`railway.env.example`](../deploy/railway.env.example), a service-variable template.
 Set any API key separately in Railway Variables.
 
 | Setting | Value or requirement |
 | --- | --- |
-| Runtime | `entrypoint.py`, dynamic `$PORT`, one Uvicorn worker |
+| Runtime | `deploy/entrypoint.py`, dynamic `$PORT`, one Uvicorn worker |
 | Replicas | One; SQLite and workflow state assume a single instance |
 | Persistent volume | Mount at `/data`; database is `/data/refundguard.sqlite3` |
 | Process identity | Entrypoint prepares volume ownership, then drops to UID/GID 10001 |
@@ -29,6 +31,15 @@ Set any API key separately in Railway Variables.
 The model settings and budgets are configurable. All customer records, financial
 activity and email delivery remain synthetic. The app requires no external
 banking, mail service or vector database.
+
+## Build locally
+
+```sh
+docker build --pull -f deploy/Dockerfile -t refundguard:local .
+```
+
+`deploy/Dockerfile.dockerignore` holds the build exclusions next to the Dockerfile,
+using [Docker's supported naming convention](https://docs.docker.com/build/concepts/context/#dockerignore-files).
 
 ## Deploy source
 
@@ -54,7 +65,7 @@ For a fresh database, obtain the first-time setup link inside an authorized
 deployment shell:
 
 ```sh
-python manage.py setup-link
+python -m scripts.manage setup-link
 ```
 
 Keep the link private and choose your own administrator password in the browser.

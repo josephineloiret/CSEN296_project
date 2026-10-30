@@ -68,7 +68,7 @@ traces are in the separate full evidence export and can contain customer content
 use only synthetic data and redact before sharing.
 
 ```sh
-.venv/bin/python manage.py verify-evidence --archive /secure/refundguard-security.json
+.venv/bin/python -m scripts.manage verify-evidence --archive /secure/refundguard-security.json
 ```
 
 ## Availability and costs
@@ -96,8 +96,8 @@ A hosting-level off-site schedule/retention policy remains to be configured.
 Manual backup (never put a real key in the repository):
 
 ```sh
-.venv/bin/python manage.py backup --output /secure/backup.rgbackup --key-file /separate-secure-store/backup-key
-.venv/bin/python manage.py restore --archive /secure/backup.rgbackup --key-file /separate-secure-store/backup-key --destination /secure/restore-exercise
+.venv/bin/python -m scripts.manage backup --output /secure/backup.rgbackup --key-file /separate-secure-store/backup-key
+.venv/bin/python -m scripts.manage restore --archive /secure/backup.rgbackup --key-file /separate-secure-store/backup-key --destination /secure/restore-exercise
 ```
 
 Restore refuses an existing destination. It verifies authenticated encryption,
@@ -124,7 +124,7 @@ and retest, restore into an isolated location, then obtain an owner decision to
 resume authority. Record impact, notification decisions, recovery time and lessons.
 
 Local MFA recovery is a trusted hosting operation, not a web endpoint:
-`python manage.py reset-mfa --email ACCOUNT_EMAIL`. It requires an interactive
+`python -m scripts.manage reset-mfa --email ACCOUNT_EMAIL`. It requires an interactive
 RESET confirmation, revokes all sessions and creates a high-severity event. Verify
 the person's identity through an agreed independent process before using it.
 

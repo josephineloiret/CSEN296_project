@@ -3,7 +3,7 @@
 Python 3.12 is the tested runtime. Start from the repository root:
 
 ```sh
-./start.sh
+./scripts/start.sh
 ```
 
 The launcher installs the locked dependencies into `.venv` if the environment is
@@ -15,14 +15,14 @@ For manual setup:
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.lock.txt
+.venv/bin/python -m pip install -r requirements/lock.txt
 .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 In a second terminal, open the private setup link:
 
 ```sh
-.venv/bin/python manage.py open
+.venv/bin/python -m scripts.manage open
 ```
 
 The app is at `http://localhost:8000`. Use that hostname consistently; cookies
@@ -33,7 +33,7 @@ and origin checks intentionally distinguish `localhost` from `127.0.0.1`.
 The lock file includes the development test dependencies. From the repository root:
 
 ```sh
-.venv/bin/python -m pytest -q
+.venv/bin/python -m pytest -c tests/pytest.ini -q
 .venv/bin/python scripts/scan_secrets.py
 .venv/bin/python -m scripts.refund_demo
 .venv/bin/python redteam/run_campaign.py --out redteam/results/campaign-local.json

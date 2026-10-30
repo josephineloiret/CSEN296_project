@@ -139,7 +139,7 @@ def test_invalid_budgets_cannot_disable_controls():
 
 
 def test_container_command_uses_dynamic_port_and_single_worker():
-    path=Path(__file__).parents[1]/'entrypoint.py'
+    path=Path(__file__).parents[1]/'deploy'/'entrypoint.py'
     spec=importlib.util.spec_from_file_location('refundguard_entrypoint',path)
     module=importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

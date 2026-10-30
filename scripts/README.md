@@ -4,6 +4,8 @@ Run commands from the repository root with the project's virtual environment.
 
 | Command | Purpose |
 | --- | --- |
+| `./scripts/start.sh` | Install locked dependencies if needed and open the local workspace |
+| `.venv/bin/python -m scripts.manage ACTION` | Setup links, account recovery, usage and backup operations |
 | `.venv/bin/python -m scripts.refund_demo` | Exercise refund limits and authority revocation with a temporary database |
 | `.venv/bin/python -m scripts.export_evidence` | Sign in interactively and export evidence from a running sandbox |
 | `.venv/bin/python scripts/scan_secrets.py` | Check source and documentation for credential patterns |

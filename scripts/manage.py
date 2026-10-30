@@ -31,7 +31,7 @@ def main():
         path=ROOT/'.env'
         if path.is_symlink():
             parser.error('The environment file must not be a symlink')
-        key=getpass.getpass('OpenAI API key (hidden; stored only in project/.env): ').strip()
+        key=getpass.getpass('OpenAI API key (hidden; stored only in the repository .env): ').strip()
         if not key.startswith('sk-') or len(key)<20:
             parser.error('That does not look like an OpenAI API key')
         values=dict(dotenv_values(path)) if path.exists() else {}
