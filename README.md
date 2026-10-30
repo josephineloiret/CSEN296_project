@@ -67,7 +67,9 @@ databases, keys, and backups are ignored by Git. See the
 Campaign output is written to the ignored `redteam/results/` directory.
 
 GitHub Actions runs tests, credential-pattern checks, dependency auditing, a
-Docker build, and a Trivy image scan. Review its results before merging.
+Docker build, and a Trivy image scan. The container gate excludes findings without
+available fixes (`--ignore-unfixed`); this does not patch those vulnerabilities.
+Review its results before merging.
 
 ## Operating instructions
 

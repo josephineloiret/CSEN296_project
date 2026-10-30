@@ -34,5 +34,6 @@ one worker/replica, and the persistent volume plus server-side variables.
 
 GitHub Actions runs application regression tests, credential scanning, Python
 dependency auditing, a Docker build and a HIGH/CRITICAL Trivy container gate.
-The inspected image scan has outstanding HIGH findings in Debian base packages.
-Keep the gate enabled and review current workflow annotations before merging.
+The gate uses `--ignore-unfixed`, so vulnerabilities without available fixes are
+excluded from its results. Those vulnerabilities remain in the image; this scan
+policy does not remediate them. Review current workflow annotations before merging.

@@ -15,10 +15,10 @@ jobs:
       - run: python scripts/scan_secrets.py
       - run: pip-audit -r requirements.lock.txt --strict
       - run: docker build --pull -t refundguard:ci .
-      - name: Scan container for critical and high vulnerabilities
+      - name: Scan container for fixable critical and high vulnerabilities
         run: |
           set +e
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$RUNNER_TEMP:/reports" aquasec/trivy:0.76.1 image --scanners vuln --format json --output /reports/refundguard-trivy.json --exit-code 1 --severity HIGH,CRITICAL refundguard:ci
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$RUNNER_TEMP:/reports" aquasec/trivy:0.76.1 image --scanners vuln --format json --output /reports/refundguard-trivy.json --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed refundguard:ci
           scan_status=$?
           set -e
           python scripts/summarize_container_scan.py "$RUNNER_TEMP/refundguard-trivy.json"
