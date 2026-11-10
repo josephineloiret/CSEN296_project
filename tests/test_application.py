@@ -362,6 +362,26 @@ def test_uploads_and_unknown_fields_are_bounded(workspace):
     assert admin.post('/api/cases',json={'order_id':'DEMO-MAYA','amount_cents':7500,'reason_code':'damaged','message':'test','agent_id':'admin'}).status_code==422
 
 
+def test_blank_text_controls_and_id_shape_are_rejected(workspace):
+    app,admin=workspace
+    case={'order_id':'DEMO-MAYA','amount_cents':7500,'reason_code':'damaged'}
+    assert admin.post('/api/cases',json={**case,'message':'   '}).status_code==422
+    assert admin.post('/api/cases',json={**case,'message':'Headphones\x00failed'}).status_code==422
+    assert admin.post('/api/cases',json={**case,'order_id':'hello!!!','message':'Damaged on arrival'}).status_code==422
+    created=admin.post('/api/cases',json={**case,'message':'The left earcup\narrived cracked.'})
+    assert created.status_code==200,created.text
+    cid=created.json()['id']
+    assert admin.post('/api/cases/'+cid+'/messages',json={'subject':'Hello\nthere','body':'A follow-up'}).status_code==422
+    assert admin.post('/api/cases/'+cid+'/messages',json={'subject':'Hello','body':'   '}).status_code==422
+    assert admin.patch('/api/profiles/demo-maya',json={'name':'Maya\nChen','notes':'ok'}).status_code==422
+    assert admin.patch('/api/profiles/not-a-customer',json={'name':'Maya Chen','notes':'ok'}).status_code==422
+    assert admin.post('/api/orders',json={'customer_id':'hello','product':'Cable','amount_cents':1000,'age_days':1}).status_code==422
+    assert admin.get('/api/cases/hello').status_code==422
+    assert admin.post('/api/knowledge/search',json={'case_id':'hello','query':'refund'}).status_code==422
+    anonymous=TestClient(app,base_url=ORIGIN,headers={'Origin':ORIGIN})
+    assert anonymous.get('/api/cases/hello').status_code==401
+
+
 def test_customer_actions_never_trigger_paid_api_calls(workspace):
     app,admin=workspace
     customer,user=account(app,admin,'customer')
