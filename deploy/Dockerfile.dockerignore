@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+.venv
+data
+logs
+__pycache__
+redteam/results
+tests
+tmp
+docs
+examples
+.pytest_cache
