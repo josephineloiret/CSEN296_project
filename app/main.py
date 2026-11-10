@@ -21,9 +21,10 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.ai import AIError, Models
 from app.config import Settings
 from app.knowledge import Knowledge
-from app.schemas import (AcceptInvite, ActiveInput, CaseInput, DocumentInput, Invitation,
-                         Login, MessageInput, OrderInput, PasswordInput, ProfileInput,
-                         SearchInput, Setup, SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken)
+from app.schemas import (CASE_ID, CUSTOMER_ID, DOCUMENT_ID, LINK_ID, USER_ID, AcceptInvite,
+                         ActiveInput, CaseInput, DocumentInput, Invitation, Login, MessageInput,
+                         OrderInput, PasswordInput, ProfileInput, SearchInput, Setup,
+                         SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken)
 from app.mfa import MFA, router as mfa_router
 from app.monitoring import signed_evidence
 from app.security import (DUMMY_HASH, PASSWORDS, create_user, current_user, digest,
@@ -148,7 +149,12 @@ def create_app(settings=None):
                         code=exc.status_code,route=route)
         return JSONResponse({'detail':exc.detail},status_code=exc.status_code,headers=exc.headers)
 
+    def require_path_id(value, pattern, label):
+        if not pattern.fullmatch(value):
+            raise HTTPException(422, f'Enter a valid {label}')
+
     def get_case(cid,user):
+        require_path_id(cid, CASE_ID, 'case id')
         row=store.case(cid,user)
         if not row:
             raise HTTPException(404,'Case not found')
@@ -269,6 +275,7 @@ def create_app(settings=None):
     @app.post('/api/team/links/{link_id}/revoke')
     def revoke_team_link(link_id:str,user=Depends(current_user)):
         require_role(user,'admin')
+        require_path_id(link_id, LINK_ID, 'team link id')
         store.execute('UPDATE rg_team_links SET revoked=1 WHERE token_hash=?',(link_id,))
         store.event(user['id'],'team.admin_link_revoked')
         return {'ok':True}
@@ -330,6 +337,7 @@ def create_app(settings=None):
     @app.patch('/api/team/{uid}')
     def account_state(uid:str,body:ActiveInput,user=Depends(current_user)):
         require_role(user,'admin')
+        require_path_id(uid, USER_ID, 'user id')
         with store.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             target=db.execute('SELECT * FROM rg_users WHERE id=?',(uid,)).fetchone()
@@ -368,6 +376,7 @@ def create_app(settings=None):
     @app.patch('/api/profiles/{profile_id}')
     def update_profile(profile_id:str,body:ProfileInput,user=Depends(current_user)):
         require_role(user,*STAFF)
+        require_path_id(profile_id, CUSTOMER_ID, 'customer id')
         if not store.execute('UPDATE rg_profiles SET name=?,notes=? WHERE id=?',(body.name,body.notes,profile_id)):
             raise HTTPException(404,'Profile not found')
         store.event(user['id'],'profile.updated',customer_id=profile_id)
@@ -485,6 +494,7 @@ def create_app(settings=None):
     @app.post('/api/knowledge/{doc_id}/review')
     def review_policy(doc_id:str,body:PolicyReview,user=Depends(current_user)):
         require_role(user,'admin','supervisor')
+        require_path_id(doc_id, DOCUMENT_ID, 'document id')
         throttle(store,'policy-review:'+user['id'],30,3600)
         try:
             return knowledge.review(doc_id,user['id'],body.action)
