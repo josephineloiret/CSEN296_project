@@ -98,6 +98,35 @@ class RefundService:
                           (decision, case_id)).rowcount != 1:
                 raise ValueError('unknown case')
 
+    def limit_reason(self, case_id):
+        """Return a cap violation before any model work is started."""
+        now = self.clock()
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError('clock must return a timezone-aware datetime')
+        now = now.astimezone(timezone.utc)
+        with self._connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            case = db.execute('SELECT amount_cents FROM cases WHERE id = ?',
+                               (case_id,)).fetchone()
+            if not case or db.execute('SELECT 1 FROM ledger WHERE case_id = ?',
+                                      (case_id,)).fetchone():
+                return None
+            return self._limit_reason(db, case, now)
+
+    @staticmethod
+    def _limit_reason(db, case, now):
+        if case['amount_cents'] > 10000:
+            return 'transaction_limit'
+        week_start = (now - timedelta(days=now.weekday())).replace(
+            hour=0, minute=0, second=0, microsecond=0)
+        spent = db.execute('SELECT COALESCE(SUM(amount_cents), 0) FROM ledger '
+                           'WHERE processed_at >= ? AND processed_at < ?',
+                           (week_start.isoformat(),
+                            (week_start + timedelta(days=7)).isoformat())).fetchone()[0]
+        if spent + case['amount_cents'] > 50000:
+            return 'weekly_limit'
+        return None
+
     def process(self, agent_id, case_id):
         """Enforce current authority and assignment at the execution boundary.
 
@@ -109,8 +138,6 @@ class RefundService:
         if now.tzinfo is None or now.utcoffset() is None:
             raise ValueError('clock must return a timezone-aware datetime')
         now = now.astimezone(timezone.utc)
-        week_start = (now - timedelta(days=now.weekday())).replace(
-            hour=0, minute=0, second=0, microsecond=0)
         with self._connect() as db:
             db.execute('BEGIN IMMEDIATE')
             case = db.execute('SELECT * FROM cases WHERE id = ?', (case_id,)).fetchone()
@@ -130,16 +157,7 @@ class RefundService:
                                       (case_id,)).fetchone()
                 if existing:
                     return Decision(**json.loads(existing['decision_json']))
-                spent = db.execute('SELECT COALESCE(SUM(amount_cents), 0) FROM ledger '
-                                   'WHERE processed_at >= ? AND processed_at < ?',
-                                   (week_start.isoformat(),
-                                    (week_start + timedelta(days=7)).isoformat())).fetchone()[0]
-                if case['amount_cents'] > 10000:
-                    reason = 'transaction_limit'
-                elif spent + case['amount_cents'] > 50000:
-                    reason = 'weekly_limit'
-                else:
-                    reason = 'within_limits'
+                reason = self._limit_reason(db, case, now) or 'within_limits'
             amount = case['amount_cents'] if reason not in (
                 'authority_inactive', 'case_not_assigned') else 0
             result = Decision(str(uuid4()), 'processed' if reason == 'within_limits'

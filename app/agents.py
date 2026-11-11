@@ -1,5 +1,11 @@
 """Specialist agents have narrow inputs; none receives an unrestricted tool registry."""
+import re
 from app.ai import AIError, Recommendation, Draft
+
+_EXTERNAL_LINK_RE = re.compile(
+    r'https?://|\[[^\]]+\]\(\s*[^)]+\)|\[[^\]]+\]\s*\[[^\]]*\]',
+    re.IGNORECASE,
+)
 
 class IntakeAgent:
     def __init__(self, store):
@@ -43,7 +49,10 @@ class EmailAgent:
 
     def draft(self, outcome):
         if self.models.settings.provider=='openai':
-            return self.models.structured('Email agent',outcome,Draft)
+            draft = self.models.structured('Email agent',outcome,Draft)
+            if _EXTERNAL_LINK_RE.search(draft.subject) or _EXTERNAL_LINK_RE.search(draft.body):
+                return None
+            return draft
         return None
 
 class ReportingAgent:

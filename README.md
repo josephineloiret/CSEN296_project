@@ -28,8 +28,10 @@ Production administrators and supervisors must enroll an authenticator.
 3. Inspect the recommendation, trusted control decision, ledger outcome and inbox.
 4. Try an over-limit case or pause authority, then compare the result.
 
-Trusted controls limit autonomous refunds to $100 per transaction and $500 per
-organization per UTC week. Policy uploads require a different reviewer's approval.
+Application-layer controls enforce autonomous refund limits of $100 per
+transaction and $500 per organization per UTC week. Cases exceeding either cap
+go to the Supervisor queue before any LLM call; execution checks the ledger
+again before crediting a refund. Policy uploads require a different reviewer's approval.
 
 ## Repository map
 
