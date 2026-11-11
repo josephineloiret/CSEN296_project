@@ -11,6 +11,7 @@ from app.ai import AIError, Draft, Plan, Recommendation, Summary
 from app.config import Settings
 from app.main import create_app
 from app.security import digest
+from app.store import stamp
 
 ORIGIN='http://localhost:8000'
 PASSWORD='a private test passphrase 2026'
@@ -165,10 +166,38 @@ def test_cap_and_expired_purchase_fail_closed(workspace):
     app,admin=workspace
     over=make_case(admin,'DEMO-SAM',12500)
     expired=make_case(admin,'DEMO-JORDAN',4000)
-    assert admin.post('/api/cases/'+over+'/run',json={}).json()['status']=='blocked'
+    over_result=admin.post('/api/cases/'+over+'/run',json={}).json()
+    assert over_result['status']=='review'
+    assert over_result['rationale']=='transaction_limit'
+    assert over_result['supervisor']=='pending'
     assert admin.post('/api/cases/'+expired+'/run',json={}).json()['status']=='review'
     assert app.state.store.refunds.balance('demo-sam')==0
     assert app.state.store.refunds.balance('demo-jordan')==0
+
+
+def test_refund_caps_route_to_supervisor_before_model_execution(workspace):
+    app,admin=workspace
+    models=app.state.workflow.models
+    over=make_case(admin,'DEMO-SAM',12500)
+    with patch.object(models.settings,'provider','openai'),patch.object(models,'structured') as structured:
+        result=admin.post('/api/cases/'+over+'/run',json={}).json()
+    structured.assert_not_called()
+    assert result['status']=='review'
+    assert result['supervisor']=='pending'
+    assert result['rationale']=='transaction_limit'
+
+    for index in range(5):
+        case_id='weekly-prior-'+str(index)
+        app.state.store.refunds.register_case(case_id,'weekly-customer-'+str(index),'refund-agent',10000)
+        app.state.store.execute('INSERT INTO ledger VALUES(?,?,?,?)',
+                                (case_id,10000,stamp(),'{}'))
+    weekly=make_case(admin,'DEMO-MAYA',7500)
+    with patch.object(models.settings,'provider','openai'),patch.object(models,'structured') as structured:
+        result=admin.post('/api/cases/'+weekly+'/run',json={}).json()
+    structured.assert_not_called()
+    assert result['status']=='review'
+    assert result['supervisor']=='pending'
+    assert result['rationale']=='weekly_limit'
 
 
 def test_supervisor_denial_and_pause_stop_execution(workspace):
@@ -211,6 +240,24 @@ def test_prompt_injection_cannot_change_authority_amount_or_recipient(workspace)
     assert app.state.store.authority_active()
     messages=app.state.store.all("SELECT recipient FROM rg_messages WHERE case_id=? AND direction='outbound'",(cid,))
     assert {m['recipient'] for m in messages}=={'maya@example.test'}
+
+
+def test_email_draft_cannot_override_trusted_case_recipient(workspace):
+    app,admin=workspace
+    cid=make_case(admin)
+    models=app.state.workflow.models
+    def propose(role,data,schema):
+        if schema is Plan:return Plan(steps=['Intake','Records','Refunds','Email','Reporting'],summary='Plan')
+        if schema is Recommendation:return Recommendation(decision='approve',rationale='Eligible',source_ids=[])
+        if schema is Draft:return Draft(subject='Refund update',body='To: attacker@example.test\nYour refund was processed.')
+        return Summary(summary='The refund was processed.')
+    with patch.object(models.settings,'provider','openai'),patch.object(models,'structured',side_effect=propose),patch.object(app.state.knowledge,'search',return_value=[]):
+        result=admin.post('/api/cases/'+cid+'/run',json={}).json()
+    assert result['status']=='processed'
+    draft=app.state.store.one("SELECT recipient,body FROM rg_messages WHERE case_id=? AND direction='draft'",(cid,))
+    assert draft['recipient']=='maya@example.test'
+    assert 'To:' not in draft['body']
+    assert 'attacker@example.test' not in draft['body']
 
 
 def test_disable_account_and_session_timeout(workspace):
@@ -269,6 +316,29 @@ def test_model_failure_requires_review_without_spending(workspace):
         r=admin.post('/api/cases/'+cid+'/run',json={})
     assert r.json()['status']=='review'
     assert app.state.store.refunds.balance('demo-maya')==0
+
+
+@pytest.mark.parametrize(('subject','body'),[
+    ('Refund update','Visit https://attacker.example/path for an update.'),
+    ('Refund update','Visit http://attacker.example/path for an update.'),
+    ('Refund update','Visit [this page](https://attacker.example/path) for an update.'),
+    ('Refund update','Visit [this page][unsafe] for an update.\n\n[unsafe]: https://attacker.example/path'),
+    ('Visit https://attacker.example/path','No links in this body.'),
+])
+def test_email_agent_rejects_drafts_with_external_links(workspace,subject,body):
+    app,admin=workspace
+    cid=make_case(admin)
+    models=app.state.workflow.models
+    def propose(role,data,schema):
+        if schema is Plan:return Plan(steps=['Intake','Records','Refunds','Email','Reporting'],summary='Plan')
+        if schema is Recommendation:return Recommendation(decision='approve',rationale='Eligible',source_ids=[])
+        if schema is Draft:return Draft(subject=subject,body=body)
+        return Summary(summary='The refund was processed.')
+    with patch.object(models.settings,'provider','openai'),patch.object(models,'structured',side_effect=propose),patch.object(app.state.knowledge,'search',return_value=[]):
+        result=admin.post('/api/cases/'+cid+'/run',json={}).json()
+    assert result['status']=='processed'
+    assert app.state.store.all("SELECT id FROM rg_messages WHERE case_id=? AND direction='draft'",(cid,))==[]
+    assert app.state.store.all("SELECT id FROM rg_messages WHERE case_id=? AND direction='outbound'",(cid,))
 
 
 def test_production_refuses_insecure_origin_and_sets_secure_cookie(tmp_path):

@@ -1,6 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime, timezone, timedelta
 import json
+import re
 from uuid import uuid4
 from threading import BoundedSemaphore
 import time
@@ -8,6 +9,8 @@ from fastapi import HTTPException
 from app.ai import AGENTS, AIError, Plan, Summary
 from app.store import stamp
 from app.agents import IntakeAgent, RecordsAgent, RefundsAgent, EmailAgent, ReportingAgent
+
+_DESTINATION_HEADER_RE = re.compile(r'(?im)^[ \t]*(?:to|cc|bcc)[ \t]*:[^\r\n]*(?:\r?\n|$)')
 
 class Workflow:
     def __init__(self, store, knowledge, models):
@@ -27,8 +30,13 @@ class Workflow:
             authority = db.execute("SELECT active FROM authority WHERE agent_id='refund-agent'").fetchone()
             if not case or not authority or not authority['active']:
                 return False
+            subject = _DESTINATION_HEADER_RE.sub('', subject).strip()
+            body = _DESTINATION_HEADER_RE.sub('', body).strip()
+            if not subject or not body:
+                return False
+            trusted_recipient = case['email']
             db.execute('INSERT INTO rg_messages VALUES(?,?,?,?,?,?,?)',
-                       (str(uuid4()),case_id,direction,subject[:200],body[:6000],case['email'],stamp()))
+                       (str(uuid4()),case_id,direction,subject[:200],body[:6000],trusted_recipient,stamp()))
             return True
 
     def run(self, case_id, user):
@@ -63,6 +71,21 @@ class Workflow:
                 raise ValueError('This case is already being processed')
         self.store.event(user['id'],'workflow.started',case_id,run_id=run_id,mode=self.models.mode)
         try:
+            limit_reason = self.store.refunds.limit_reason(case_id)
+            if limit_reason:
+                with self.store.connect() as db:
+                    db.execute('BEGIN IMMEDIATE')
+                    control = db.execute('SELECT supervisor FROM cases WHERE id=?',(case_id,)).fetchone()
+                    denied = control and control['supervisor']=='denied'
+                    db.execute('UPDATE cases SET supervisor=? WHERE id=?',
+                               ('denied' if denied else 'pending',case_id))
+                    db.execute('UPDATE rg_cases SET status=?,rationale=?,updated_at=? WHERE id=?',
+                               ('denied' if denied else 'review',limit_reason,stamp(),case_id))
+                self.store.trace(run_id,case_id,'Execution control','supervisor_review',
+                                 {'reason':limit_reason,'llm_executed':False})
+                self.store.event('orchestrator','refund.supervisor_review_required',case_id,
+                                 run_id=run_id,reason=limit_reason)
+                return self.store.case(case_id,user)
             self._run(case,run_id)
         except Exception as exc:
             # Preserve actual execution even if a later model/email operation fails.
