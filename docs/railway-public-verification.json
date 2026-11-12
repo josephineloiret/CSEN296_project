@@ -1,0 +1,137 @@
+{
+  "origin": "https://refundguard-production-11cb.up.railway.app",
+  "created_at": "2026-10-28T02:36:31.067607+00:00",
+  "passed": true,
+  "checks": [
+    {
+      "name": "Browser page over verified TLS",
+      "pass": true,
+      "status": 200
+    },
+    {
+      "name": "strict-transport-security",
+      "pass": true
+    },
+    {
+      "name": "content-security-policy",
+      "pass": true
+    },
+    {
+      "name": "x-frame-options",
+      "pass": true
+    },
+    {
+      "name": "x-content-type-options",
+      "pass": true
+    },
+    {
+      "name": "cache-control",
+      "pass": true
+    },
+    {
+      "name": "Public health",
+      "pass": true
+    },
+    {
+      "name": "Login required: /api/auth/me",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/usage",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/cases",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/knowledge",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/team",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/reports/export",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/team/links",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/security/alerts",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Login required: /api/security/export",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "Private file unavailable: /.env",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /app/config.py",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /data/setup-token",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /static/%2e%2e/config.py",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /data/mfa-key",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /data/evidence-key",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /data/backup-key",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Private file unavailable: /data/backups",
+      "pass": true,
+      "status": 404
+    },
+    {
+      "name": "Cross-origin login rejected",
+      "pass": true,
+      "status": 403
+    },
+    {
+      "name": "Anonymous paid tool rejected",
+      "pass": true,
+      "status": 401
+    },
+    {
+      "name": "HTTP upgrades to HTTPS",
+      "pass": true,
+      "status": 301
+    }
+  ],
+  "scope": "Unauthenticated HTTPS, headers, private-file and paid-tool access checks. No OpenAI calls."
+}

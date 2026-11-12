@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="640" viewBox="0 0 1240 640" role="img" aria-label="RefundGuard system architecture. Customers and supervisors reach a trusted API through the browser UI. The API passes an authenticated case to the LLM orchestrator, which routes work to five agents. Agents can only request tools through a typed tool gateway inside an independent execution boundary, which re-checks identity, case scope and permissions before reaching the refund control, mock email store or scoped retrieval. Supervisor actions go from the trusted API straight to the refund control, bypassing the LLM. Attempted actions and control decisions are both recorded as audit evidence for the assurance reports.">
+        <style>
+.box     { fill: #ffffff; stroke: #8f9aaa; stroke-width: 1.3; stroke-dasharray: 5 4; }
+.actor   { fill: #ffffff; stroke: #1a2230; stroke-width: 1.3; }
+.built   { fill: #def2ed; stroke: #0d7a6a; stroke-width: 2; }
+.z-llm   { fill: #fcf2e3; stroke: #a8620c; stroke-width: 1.5; stroke-dasharray: 2 4; }
+.z-exec  { fill: #e8eff9; stroke: #2c5ca3; stroke-width: 1.5; }
+.note    { fill: #fcf2e3; }
+.chip    { fill: #fdecea; stroke: #b42318; stroke-width: 1.3; }
+.chip-n  { fill: #ffffff; stroke: #8f9aaa; stroke-width: 1.3; }
+.wire    { fill: none; stroke: #1a2230; stroke-width: 1.3; }
+.wire-t  { fill: none; stroke: #2c5ca3; stroke-width: 2.2; }
+.wire-b  { fill: none; stroke: #b42318; stroke-width: 1.3; }
+.ah      { fill: #1a2230; }
+.ah-t    { fill: #2c5ca3; }
+.ah-b    { fill: #b42318; }
+.t   { fill: #1a2230; font: 600 13px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.s   { fill: #5a6575; font: 400 11px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.m   { fill: #5a6575; font: 400 10.5px "IBM Plex Mono", Menlo, monospace; }
+.mb  { fill: #b42318; font: 500 11px "IBM Plex Mono", Menlo, monospace; }
+.mo  { fill: #5a6575; font: 500 11px "IBM Plex Mono", Menlo, monospace; }
+.lab { fill: #5a6575; font: 500 10.5px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.lab-t { fill: #2c5ca3; font: 600 11px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.zl-llm  { fill: #a8620c; font: 600 11px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .08em; }
+.zl-exec { fill: #2c5ca3; font: 600 11px "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: .08em; }
+.acc { fill: #0d7a6a; font: 600 10.5px "IBM Plex Mono", Menlo, monospace; }
+
+</style>
+<rect width="1240" height="640" fill="#ffffff"/>
+<defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+          <marker id="at" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-t"/></marker>
+        </defs>
+
+        <!-- zones -->
+        <rect class="z-llm" x="420" y="50" width="320" height="460" rx="8"/>
+        <text class="zl-llm" x="436" y="74">LLM AGENT PLANE</text>
+        <text class="s" x="436" y="90">Outputs are untrusted; cannot grant authority</text>
+
+        <rect class="z-exec" x="790" y="50" width="430" height="460" rx="8"/>
+        <text class="zl-exec" x="806" y="74">INDEPENDENT EXECUTION BOUNDARY</text>
+        <text class="s" x="806" y="90">Re-checks authority when the action executes</text>
+
+        <!-- supervisor trusted path -->
+        <polyline class="wire-t" points="380,186 400,186 400,30 1090,30 1090,108" marker-end="url(#at)"/>
+        <text class="lab-t" x="745" y="22" text-anchor="middle">Supervisor actions: revoke authority · approve · deny  (trusted path, never an agent tool)</text>
+
+        <!-- actors and entry -->
+        <rect class="actor" x="20" y="80" width="150" height="48" rx="5"/>
+        <text class="t" x="95" y="101" text-anchor="middle">Customer</text>
+        <text class="s" x="95" y="117" text-anchor="middle">synthetic refund case</text>
+
+        <rect class="actor" x="20" y="178" width="150" height="48" rx="5"/>
+        <text class="t" x="95" y="199" text-anchor="middle">Admin / supervisor</text>
+        <text class="s" x="95" y="215" text-anchor="middle">policies · escalations</text>
+
+        <rect class="box" x="220" y="80" width="160" height="48" rx="5"/>
+        <text class="t" x="300" y="101" text-anchor="middle">Browser UI</text>
+        <text class="s" x="300" y="117" text-anchor="middle">case form · review</text>
+
+        <rect class="box" x="220" y="170" width="160" height="64" rx="5"/>
+        <text class="t" x="300" y="191" text-anchor="middle">Trusted API</text>
+        <text class="s" x="300" y="207" text-anchor="middle">authenticates user,</text>
+        <text class="s" x="300" y="222" text-anchor="middle">attaches identity + case</text>
+
+        <line class="wire" x1="170" y1="104" x2="218" y2="104" marker-end="url(#a)"/>
+        <line class="wire" x1="300" y1="128" x2="300" y2="168" marker-end="url(#a)"/>
+        <line class="wire" x1="170" y1="202" x2="218" y2="202" marker-end="url(#a)"/>
+        <line class="wire" x1="380" y1="214" x2="438" y2="214" marker-end="url(#a)"/>
+
+        <!-- untrusted input note -->
+        <rect class="note" x="20" y="280" width="360" height="112" rx="6"/>
+        <text class="zl-llm" x="36" y="304">TREATED AS UNTRUSTED INPUT</text>
+        <text class="s" x="36" y="326">• customer messages and case text</text>
+        <text class="s" x="36" y="344">• inbound mock emails</text>
+        <text class="s" x="36" y="362">• retrieved policy and customer documents</text>
+        <text class="s" x="36" y="380">• every LLM output and tool request</text>
+
+        <!-- agent plane -->
+        <rect class="box" x="570" y="108" width="150" height="44" rx="5"/>
+        <text class="t" x="645" y="127" text-anchor="middle">Memory</text>
+        <text class="s" x="645" y="142" text-anchor="middle">session + persistent task</text>
+
+        <rect class="box" x="440" y="180" width="280" height="56" rx="5"/>
+        <text class="t" x="580" y="203" text-anchor="middle">LLM orchestrator</text>
+        <text class="s" x="580" y="220" text-anchor="middle">decompose · route · aggregate</text>
+        <line class="wire" x1="645" y1="178" x2="645" y2="154" marker-start="url(#a)" marker-end="url(#a)"/>
+
+        <polyline class="wire" points="452,236 452,472"/>
+        <line class="wire" x1="452" y1="280" x2="468" y2="280" marker-end="url(#a)"/>
+        <line class="wire" x1="452" y1="328" x2="468" y2="328" marker-end="url(#a)"/>
+        <line class="wire" x1="452" y1="376" x2="468" y2="376" marker-end="url(#a)"/>
+        <line class="wire" x1="452" y1="424" x2="468" y2="424" marker-end="url(#a)"/>
+        <line class="wire" x1="452" y1="472" x2="468" y2="472" marker-end="url(#a)"/>
+
+        <rect class="box" x="470" y="262" width="250" height="36" rx="5"/>
+        <text class="t" x="484" y="285">Intake</text>
+        <text class="s" x="706" y="285" text-anchor="end">submit · assign</text>
+        <rect class="box" x="470" y="310" width="250" height="36" rx="5"/>
+        <text class="t" x="484" y="333">Email</text>
+        <text class="s" x="706" y="333" text-anchor="end">draft · send · receive</text>
+        <rect class="box" x="470" y="358" width="250" height="36" rx="5"/>
+        <text class="t" x="484" y="381">Records</text>
+        <text class="s" x="706" y="381" text-anchor="end">profiles · cases</text>
+        <rect class="box" x="470" y="406" width="250" height="36" rx="5"/>
+        <text class="t" x="484" y="429">Refunds</text>
+        <text class="s" x="706" y="429" text-anchor="end">requests refund tool</text>
+        <rect class="box" x="470" y="454" width="250" height="36" rx="5"/>
+        <text class="t" x="484" y="477">Reporting</text>
+        <text class="s" x="706" y="477" text-anchor="end">approved · denied · reason</text>
+
+        <!-- agent ⇄ gateway -->
+        <text class="lab" x="765" y="270" text-anchor="middle">tool calls</text>
+        <line class="wire" x1="722" y1="280" x2="808" y2="280" marker-start="url(#a)" marker-end="url(#a)"/>
+        <line class="wire" x1="722" y1="328" x2="808" y2="328" marker-start="url(#a)" marker-end="url(#a)"/>
+        <line class="wire" x1="722" y1="376" x2="808" y2="376" marker-start="url(#a)" marker-end="url(#a)"/>
+        <line class="wire" x1="722" y1="424" x2="808" y2="424" marker-start="url(#a)" marker-end="url(#a)"/>
+        <line class="wire" x1="722" y1="472" x2="808" y2="472" marker-start="url(#a)" marker-end="url(#a)"/>
+        <text class="lab" x="765" y="502" text-anchor="middle">results</text>
+
+        <!-- execution boundary -->
+        <rect class="box" x="810" y="100" width="120" height="390" rx="5"/>
+        <text class="t" x="870" y="268" text-anchor="middle">Typed tool</text>
+        <text class="t" x="870" y="284" text-anchor="middle">gateway</text>
+        <text class="s" x="870" y="310" text-anchor="middle">checks identity,</text>
+        <text class="s" x="870" y="325" text-anchor="middle">case scope and</text>
+        <text class="s" x="870" y="340" text-anchor="middle">permissions on</text>
+        <text class="s" x="870" y="355" text-anchor="middle">every call</text>
+
+        <line class="wire" x1="930" y1="145" x2="978" y2="145" marker-end="url(#a)"/>
+        <line class="wire" x1="930" y1="292" x2="978" y2="292" marker-end="url(#a)"/>
+        <line class="wire" x1="930" y1="368" x2="978" y2="368" marker-end="url(#a)"/>
+
+        <rect class="built" x="980" y="110" width="220" height="70" rx="5"/>
+        <text class="t" x="1090" y="134" text-anchor="middle">Refund control</text>
+        <text class="s" x="1090" y="151" text-anchor="middle">≤ $100 each · ≤ $500 per week</text>
+        <text class="acc" x="1090" y="168" text-anchor="middle">app/refunds.py · built</text>
+
+        <line class="wire" x1="1090" y1="180" x2="1090" y2="198" marker-end="url(#a)"/>
+        <text class="lab" x="1098" y="193">atomic write</text>
+        <rect class="built" x="980" y="200" width="220" height="44" rx="5"/>
+        <text class="t" x="1090" y="219" text-anchor="middle">SQLite</text>
+        <text class="s" x="1090" y="235" text-anchor="middle">cases · balances · ledger · audit</text>
+
+        <rect class="box" x="980" y="270" width="220" height="44" rx="5"/>
+        <text class="t" x="1090" y="289" text-anchor="middle">Mock email store</text>
+        <text class="s" x="1090" y="305" text-anchor="middle">local inbox · outbox</text>
+
+        <rect class="box" x="980" y="340" width="220" height="56" rx="5"/>
+        <text class="t" x="1090" y="360" text-anchor="middle">Scoped retrieval</text>
+        <text class="s" x="1090" y="376" text-anchor="middle">filters to the authorized case</text>
+        <text class="s" x="1090" y="390" text-anchor="middle">before returning anything</text>
+
+        <line class="wire" x1="1032" y1="396" x2="1032" y2="422" marker-end="url(#a)"/>
+        <line class="wire" x1="1147" y1="396" x2="1147" y2="422" marker-end="url(#a)"/>
+        <rect class="box" x="980" y="424" width="105" height="50" rx="5"/>
+        <text class="t" x="1032" y="446" text-anchor="middle">Vector DB</text>
+        <text class="s" x="1032" y="462" text-anchor="middle">embeddings</text>
+        <rect class="box" x="1095" y="424" width="105" height="50" rx="5"/>
+        <text class="t" x="1147" y="446" text-anchor="middle">Policy docs</text>
+        <text class="s" x="1147" y="462" text-anchor="middle">versioned</text>
+
+        <!-- evidence -->
+        <line class="wire" x1="595" y1="510" x2="595" y2="558" marker-end="url(#a)"/>
+        <text class="lab" x="603" y="540">attempted actions</text>
+        <line class="wire" x1="870" y1="490" x2="870" y2="558" marker-end="url(#a)"/>
+        <text class="lab" x="878" y="540">decisions + effects</text>
+
+        <rect class="box" x="440" y="560" width="520" height="60" rx="5"/>
+        <text class="t" x="700" y="585" text-anchor="middle">Audit evidence</text>
+        <text class="s" x="700" y="603" text-anchor="middle">attempted action · control decision · executed effect, joined by decision ID</text>
+
+        <line class="wire" x1="960" y1="590" x2="998" y2="590" marker-end="url(#a)"/>
+        <rect class="box" x="1000" y="560" width="210" height="60" rx="5"/>
+        <text class="t" x="1105" y="585" text-anchor="middle">Assurance reports</text>
+        <text class="s" x="1105" y="603" text-anchor="middle">red team · benchmarks · governance</text>
+      
+<!-- legend -->
+<text class="zl-exec" x="20" y="440" style="fill:#5a6575">LEGEND</text>
+<rect class="built" x="20" y="456" width="34" height="20" rx="3"/><text class="s" x="66" y="471" style="font-size:12px;fill:#1a2230">Built and tested</text>
+<rect class="box" x="20" y="490" width="34" height="20" rx="3"/><text class="s" x="66" y="505" style="font-size:12px;fill:#1a2230">Planned</text>
+<rect class="z-llm" x="20" y="524" width="34" height="20" rx="3"/><text class="s" x="66" y="539" style="font-size:12px;fill:#1a2230">LLM agent plane (untrusted)</text>
+<rect class="z-exec" x="20" y="558" width="34" height="20" rx="3"/><text class="s" x="66" y="573" style="font-size:12px;fill:#1a2230">Independent execution boundary</text>
+<line class="wire-t" x1="20" y1="602" x2="54" y2="602"/><text class="s" x="66" y="606" style="font-size:12px;fill:#1a2230">Trusted supervisor path</text>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "project_id": "4df6bd60-2948-4ba3-910c-b5c0fe473d19",
+  "service_id": "fc8d95c3-5b60-4c5e-b65a-3a97cc7c423a",
+  "environment_id": "59dc31c6-12d7-4400-8a71-1aef8547ae81",
+  "volume_id": "cc42cbfc-8fc0-42c0-be43-c7aded160211",
+  "volume_mount": "/data",
+  "dashboard_url": "https://railway.com/project/4df6bd60-2948-4ba3-910c-b5c0fe473d19",
+  "public_url": "https://refundguard-production-11cb.up.railway.app",
+  "deployment_id": "38453f6c-cc3d-458a-9a57-00392b65f674"
+}

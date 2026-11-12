@@ -1,0 +1,8 @@
+.env
+.env.*
+.venv
+data
+logs
+__pycache__
+redteam/results
+tests

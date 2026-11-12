@@ -1,0 +1,31 @@
+{
+  "algorithm": "SHA-256",
+  "files": {
+    "project/app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "project/app/agent.py": "f35db57a2aafa664a945b67aa2e97e20a063c584d5dab480f2c8ec0dbe89dfd8",
+    "project/app/agents.py": "295b533dcc65e6bf72df5cea02ba5340f044ec01083b182402822387ecdb942f",
+    "project/app/ai.py": "207310474cf676334f9fa2c0de0807dad88c91b3126c06386c78c1b5e3705bfb",
+    "project/app/benchmarks.py": "93282087770b5c485d46c2c688b8c7dad0917a84d683a8d9a817398750c5fb62",
+    "project/app/budget.py": "10e14022494c1bf41e1c9c0793e92418d22cff9cbc144fd7e5520c0f7df9c64c",
+    "project/app/config.py": "c7c53075302f9c31895c41f16eef60ba31f7fa5c16c31e2e0103704f15471209",
+    "project/app/execution.py": "bc1b978300f234e99effa004ae45a4df4ca64acd211d66e46ad4f05f98907b19",
+    "project/app/knowledge.py": "28ccbb484cac2c6aaa49e4b08f3a700fd306af9ab9cb5d8ee08d18a819ac81de",
+    "project/app/main.py": "9e43d250880d1c82ecb3a9b0ed10d6b77c33851b5e047f0e3e8119aa70130319",
+    "project/app/mfa.py": "af31950d96d3fe72bb274db45b88f2aa7391ddc35c6b6016ece099420f4f2d19",
+    "project/app/monitoring.py": "192dc2e086667b044b05ca2a32035ea7a0c704805be6835948893353a5402d8c",
+    "project/app/recovery.py": "57ab830efce58e20b5fb64a1fbe215de057cb2132ecda833a41641826044a659",
+    "project/app/refunds.py": "090b36dfc07f277e4e4e36126aa405ffe753bfa12bfd8246fb84b68b5be836a8",
+    "project/app/retriever.py": "f87ff54e565b4d5233e2924408394f21831708cf1f14fea00aa1efa8515c4909",
+    "project/app/schemas.py": "0d56f049534bb118619edc0c95d36b73c79dadca8f488878637b0b247d448bbf",
+    "project/app/security.py": "8405078159fac57c01cdb89aea911f61770438b49c3eb7b444a33198c0180f87",
+    "project/app/static/app.js": "a8fbd94ea2ad0a888f773a75bb51849ec1117ac63227359b13d707f3ae0348d7",
+    "project/app/static/favicon.svg": "07c7a531ec27cad32a9503689922b622f8cccc3d978d7e8aea3b4046910e3650",
+    "project/app/static/index.html": "f7d7e7aa8038401c3573c34c2fd43912fabd1ebbadeb36756ca6b0136185f080",
+    "project/app/static/styles.css": "ed7a7d0cc74f4dddae4e40c9694f20e0739746b09d93f406af617185d565bf97",
+    "project/app/static/theme.css": "4fcb308d651808b7d1e078b56ceb9f1a20f11446855c421f7d5fed83a0990fe3",
+    "project/app/store.py": "dd916c1f332cb0512489383e38495264c97a6f9bbd0060b4eba769f3a438162b",
+    "project/app/workflow.py": "9a4335f9b69cfcce891c57cbee03b85d3d9db7458dfc1b30fb762f966a86a54c",
+    "project/entrypoint.py": "f1bcb5ddf78c4cf21d1b434fe59920c6dbae784a334d678f9643ced709c1bc9d",
+    "project/requirements.lock.txt": "ea02495237c9a903a4630a651cafb89a78190b1f5c474c596d09760cf0f62e0b"
+  }
+}

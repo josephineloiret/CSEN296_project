@@ -1,0 +1,6 @@
+{
+  "verified_at_utc": "2026-10-28T02:35:09.730600+00:00",
+  "action": "recovery.backup_created",
+  "source": "Railway production application logs",
+  "scope": "Automatic encrypted backup completed; independent off-site copy and a production-volume restore drill remain operator tasks."
+}

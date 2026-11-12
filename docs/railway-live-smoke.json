@@ -1,0 +1,14 @@
+{
+  "verified_at_utc": "2026-10-24T05:53:13Z",
+  "live_generation": true,
+  "embedding_dimensions": 384,
+  "sqlite_vec": "v0.1.9",
+  "process_uid": 10001,
+  "requests": 2,
+  "accounted_usd": 0.000075,
+  "unreconciled_requests": 0,
+  "temporary_ssh_revoked": true,
+  "railway_registered_ssh_keys_after": 0,
+  "temporary_local_keypair_deleted": true,
+  "first_admin_creation": "owner step pending"
+}
