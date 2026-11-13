@@ -10,17 +10,17 @@ Website user guide
 
 A practical guide to signing in, creating a support case, following a refund decision and using the shared guest demo.
 
-November 12, 2026  |  Version 1.1
+November 12, 2026  |  Version 1.2
 
 > Public guest demo
-https://refundguard-production-11cb.up.railway.app/guest/
+https://refundguard-production-11cb.up.railway.app
 Email: guest@refundguard.example
 Password: RefundGuard-Guest-2026!
-These credentials are intentionally public. No invitation is needed for the guest demo.
+These credentials are intentionally public. Sign in on the main website; no invitation is needed for guest access. The /guest/ address redirects to the same sign-in page.
 
 Start here
 
-1. Open the guest demo. Use the link above and sign in with the guest email and password.
+1. Open the website. Use the main website link above and enter the public guest login. Individual team accounts use the same sign-in page.
 
 2. Create a case. Choose an available synthetic purchase, enter a refund amount and reason, and select Create case.
 
@@ -48,7 +48,7 @@ Choose the guest demo for public access, or the team workspace if you have an in
 
 Public guest access
 
-Open https://refundguard-production-11cb.up.railway.app/guest/. Enter guest@refundguard.example and RefundGuard-Guest-2026!, then select Sign in.
+Open https://refundguard-production-11cb.up.railway.app. Enter guest@refundguard.example and RefundGuard-Guest-2026!, then select Sign in.
 
 The guest demo uses a separate synthetic workspace and local simulation. You can create purchases and cases, run the workflow, view mock messages and balances, search demo documents, and export demo evidence. All visitors share this demo.
 
@@ -62,7 +62,7 @@ The private team workspace is https://refundguard-production-11cb.up.railway.app
 
 Hosted Supervisors and Administrators must complete authenticator setup or verification when prompted. Keep recovery codes private. The application generates invitation links but does not send real invitation emails.
 
-Guest sessions and individual team sessions are separate. Use the correct URL and account for the workspace you intend to open.
+Guest and individual team accounts use the same website address, with separate data and sessions. Sign out before switching accounts.
 
 REFUNDGUARD / 03
 
@@ -194,7 +194,7 @@ Keep the case ID and the displayed error when asking the RefundGuard hosting tea
 
 | WHAT YOU SEE | WHAT TO DO |
 | --- | --- |
-| Guest login does not work | Use the /guest/ URL, guest@refundguard.example and the exact public password on page 1. The private root login does not accept the guest account. |
+| Guest login does not work | Use the main website, guest@refundguard.example and the exact public password on page 1. The /guest/ address redirects to that same sign-in page. |
 | Private invitation expired | Ask an Administrator for a fresh individual invitation. This does not affect the public guest login. |
 | No unused purchase | Open Settings > Add purchase, create a fresh synthetic purchase and return to New case. |
 | No Run agent workflow button | A Customer account cannot run agents. An Approved or Denied case also has no Run button. |
@@ -207,10 +207,10 @@ Keep the case ID and the displayed error when asking the RefundGuard hosting tea
 
 Useful links
 
-Public guest demo: https://refundguard-production-11cb.up.railway.app/guest/
+Public guest demo: https://refundguard-production-11cb.up.railway.app
 Private team workspace: https://refundguard-production-11cb.up.railway.app
 Project repository: https://github.com/josephineloiret/CSEN296_project
 
 The hosted website is deployed separately from the repository. If a screen differs from this guide, give the hosting team the URL, your access type, case ID and a screenshot. Do not send individual passwords, invitation links, recovery codes or provider keys.
 
-RefundGuard website user guide | Version 1.1 | November 12, 2026
+RefundGuard website user guide | Version 1.2 | November 12, 2026
