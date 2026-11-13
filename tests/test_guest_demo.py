@@ -22,7 +22,7 @@ def demo(tmp_path):
         assert response.status_code == 200, response.text
         client.headers['X-CSRF-Token'] = response.json()['csrf']
         provider.assert_not_called()
-    guest = next(route.app for route in app.routes if getattr(route, 'path', '') == '/guest')
+    guest = app.state.guest_app
     return app, guest, client
 
 
@@ -36,10 +36,10 @@ def test_demo_is_separate_and_uses_its_own_cookie(demo):
     assert guest.state.store.settings.daily_budget_usd == '0'
     assert client.cookies.get('refundguard_demo')
     assert not client.cookies.get('refundguard_local')
-    assert client.get('/api/cases').status_code == 401
-    assert client.post('/api/auth/login', json={'email': EMAIL, 'password': PASSWORD}).status_code == 401
+    assert client.get('/api/cases').status_code == 200
+    assert client.post('/api/auth/login', json={'email': EMAIL, 'password': PASSWORD}).status_code == 200
     assert private.state.store.one('SELECT id FROM rg_users') is None
-    assert client.get('/api/auth/status').json()['guest_demo_url'] == '/guest/'
+    assert client.get('/api/auth/status').json()['guest_demo_url'] == '/'
     assert client.get('/guest/api/auth/status').json()['setup_required'] is False
 
 
@@ -89,7 +89,9 @@ def test_mounted_demo_keeps_origin_and_csrf_checks(demo):
 
 def test_guest_demo_can_be_disabled_and_refuses_paid_configuration(tmp_path):
     app = create_app(Settings(database=tmp_path/'disabled.sqlite3'))
-    assert TestClient(app).get('/guest/').status_code == 404
+    redirect = TestClient(app).get('/guest/',follow_redirects=False)
+    assert redirect.status_code == 307
+    assert redirect.headers['location'] == '/'
     with pytest.raises(ValueError, match='local simulation'):
         Settings(guest_workspace=True, provider='openai', api_key='fake-key').validate()
 
@@ -104,3 +106,51 @@ def test_production_guest_cookie_is_distinct_and_secure(tmp_path):
     assert '__Host-refundguard-demo=' in result.headers['set-cookie']
     assert 'Secure' in result.headers['set-cookie']
     assert 'HttpOnly' in result.headers['set-cookie']
+
+
+def test_root_guest_login_runs_isolated_workflow_and_redirects(demo):
+    private, guest, client = demo
+    for path in ('/guest','/guest/'):
+        redirect = client.get(path,follow_redirects=False)
+        assert redirect.status_code == 307
+        assert redirect.headers['location'] == '/'
+    login = client.post('/api/auth/login',json={'email':EMAIL,'password':PASSWORD})
+    assert login.status_code == 200
+    assert login.json()['guest_workspace'] is True
+    client.headers['X-CSRF-Token'] = login.json()['csrf']
+    assert client.get('/api/auth/me').json()['guest_workspace'] is True
+    case = client.post('/api/cases',json={'order_id':'DEMO-MAYA','amount_cents':7500,
+                        'reason_code':'damaged','message':'My headphones arrived damaged.'})
+    assert case.status_code == 200,case.text
+    with patch('app.ai.httpx.Client') as provider:
+        result = client.post('/api/cases/'+case.json()['id']+'/run',json={})
+        assert result.json()['status'] == 'processed'
+        provider.assert_not_called()
+    assert guest.state.store.refunds.balance('demo-maya') == 7500
+    assert private.state.store.refunds.balance('demo-maya') == 0
+    assert client.post('/api/auth/password',json={'current_password':PASSWORD,
+                       'new_password':'other shared password 2026'}).status_code == 403
+
+
+def test_main_login_can_switch_between_private_and_guest(demo):
+    private, guest, client = demo
+    password = 'Private owner test password 2026'
+    created = client.post('/api/auth/setup',json={'name':'Private Owner','email':'owner@example.test',
+                         'password':password,'token':private.state.store.bootstrap_token()})
+    assert created.status_code == 200,created.text
+    assert client.get('/api/auth/me').json()['guest_workspace'] is False
+    assert client.post('/api/auth/login',json={'email':EMAIL,'password':PASSWORD}).status_code == 200
+    assert not client.cookies.get('refundguard_local')
+    assert client.get('/api/auth/me').json()['guest_workspace'] is True
+    assert client.post('/api/auth/login',json={'email':'owner@example.test','password':password}).status_code == 200
+    assert not client.cookies.get('refundguard_demo')
+    assert client.get('/api/auth/me').json()['guest_workspace'] is False
+
+
+def test_root_login_router_retains_validation_origin_and_upload_limits(demo):
+    _, _, client = demo
+    data={'email':EMAIL,'password':PASSWORD}
+    assert client.post('/api/auth/login',json=data,headers={'Origin':'https://untrusted.example'}).status_code == 403
+    assert client.post('/api/auth/login',content='not-json',headers={'Content-Type':'text/plain'}).status_code == 415
+    assert client.post('/api/auth/login',content='not-json',headers={'Content-Type':'application/json'}).status_code == 422
+    assert client.post('/api/auth/login',content='x'*200001,headers={'Content-Type':'application/json'}).status_code == 413

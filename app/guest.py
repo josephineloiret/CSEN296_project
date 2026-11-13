@@ -6,6 +6,67 @@ EMAIL = 'guest@refundguard.example'
 PASSWORD = 'RefundGuard-Guest-2026!'
 
 
+class GuestRoutingMiddleware:
+    """Use the main URL for both accounts while keeping their apps/data separate."""
+
+    def __init__(self, app, guest_app, origin, guest_cookie, private_cookie):
+        self.app, self.guest_app = app, guest_app
+        self.origin = origin
+        self.guest_cookie, self.private_cookie = guest_cookie, private_cookie
+
+    async def __call__(self, scope, receive, send):
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+        import asyncio
+        import json
+        path = scope.get('path', '')
+        if scope['type'] != 'http' or not path.startswith('/api/'):
+            return await self.app(scope, receive, send)
+        request = Request(scope)
+        forwarded_receive = receive
+        guest = False
+        if path == '/api/auth/login' and scope['method'] == 'POST':
+            if request.headers.get('origin') != self.origin:
+                return await JSONResponse({'detail':'Request origin was not accepted'},403)(scope,receive,send)
+            if not request.headers.get('content-type','').lower().startswith('application/json'):
+                return await JSONResponse({'detail':'JSON requests are required'},415)(scope,receive,send)
+            async def bounded_body():
+                body = bytearray()
+                while True:
+                    message = await receive()
+                    if message['type'] == 'http.disconnect':
+                        return None
+                    body.extend(message.get('body',b''))
+                    if len(body) > 200000:
+                        return None
+                    if not message.get('more_body',False):
+                        return bytes(body)
+            try:
+                body = await asyncio.wait_for(bounded_body(),timeout=10)
+            except TimeoutError:
+                return await JSONResponse({'detail':'Upload timed out'},408)(scope,receive,send)
+            if body is None:
+                return await JSONResponse({'detail':'Request is too large or disconnected'},413)(scope,receive,send)
+            try:
+                data = json.loads(body)
+                guest = isinstance(data,dict) and str(data.get('email','')).strip().lower() == EMAIL
+            except (ValueError,TypeError):
+                pass
+            replayed = False
+            async def replay_body():
+                nonlocal replayed
+                if not replayed:
+                    replayed = True
+                    return {'type':'http.request','body':body,'more_body':False}
+                return await receive()
+            forwarded_receive = replay_body
+        elif path not in {'/api/auth/status','/api/auth/setup','/api/auth/accept-invite',
+                          '/api/auth/accept-team-invite','/api/auth/team-invite-status'}:
+            guest = bool(request.cookies.get(self.guest_cookie)) and not request.cookies.get(self.private_cookie)
+        target = self.guest_app if guest else self.app
+        return await target(scope,forwarded_receive,send)
+
+
 def settings_for_guest(settings):
     return replace(settings, database=Path(settings.database).parent/'public-guest'/'refundguard.sqlite3',
                    provider='local', api_key='', daily_budget_usd='0', monthly_budget_usd='0',

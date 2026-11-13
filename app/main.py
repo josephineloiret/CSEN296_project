@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -178,7 +178,7 @@ def create_app(settings=None):
     def auth_status():
         return {'setup_required':not bool(store.one('SELECT id FROM rg_users LIMIT 1')),
                 'guest_workspace':settings.guest_workspace,
-                'guest_demo_url':'/guest/' if settings.public_guest_enabled else None}
+                'guest_demo_url':'/' if settings.public_guest_enabled else None}
 
     @app.post('/api/auth/setup')
     def setup(body:Setup,request:Request,response:Response):
@@ -213,7 +213,15 @@ def create_app(settings=None):
             store.execute('UPDATE rg_users SET password_hash=? WHERE id=?',(hash_password(body.password),user['id']))
         csrf=new_session(store,user['id'],response,request.cookies.get(settings.cookie_name))
         store.event(user['id'],'auth.login')
-        return {'user':public_user(user),'csrf':csrf}
+        if settings.guest_workspace:
+            from dataclasses import replace
+            response.delete_cookie(replace(settings,guest_workspace=False).cookie_name,path='/',
+                                   secure=settings.production,httponly=True,samesite='strict')
+        elif settings.public_guest_enabled:
+            from app.guest import settings_for_guest
+            response.delete_cookie(settings_for_guest(settings).cookie_name,path='/',
+                                   secure=settings.production,httponly=True,samesite='strict')
+        return {'user':public_user(user),'csrf':csrf,'guest_workspace':settings.guest_workspace}
 
     @app.post('/api/auth/accept-invite')
     def accept_invite(body:AcceptInvite,request:Request,response:Response):
@@ -305,7 +313,8 @@ def create_app(settings=None):
     @app.post('/api/auth/logout')
     def logout(request:Request,response:Response,user=Depends(current_user)):
         store.execute('DELETE FROM rg_sessions WHERE token_hash=?',(digest(request.cookies.get(settings.cookie_name,'')),))
-        response.delete_cookie(settings.cookie_name,path='/')
+        response.delete_cookie(settings.cookie_name,path='/',secure=settings.production,
+                               httponly=True,samesite='strict')
         store.event(user['id'],'auth.logout')
         return {'ok':True}
 
@@ -582,9 +591,19 @@ def create_app(settings=None):
     def index():
         return FileResponse(STATIC/'index.html')
 
+    @app.get('/guest')
+    @app.get('/guest/')
+    def guest_redirect():
+        return RedirectResponse('/',status_code=307)
+
     if settings.public_guest_enabled:
-        from app.guest import settings_for_guest
-        app.mount('/guest', create_app(settings_for_guest(settings)))
+        from app.guest import GuestRoutingMiddleware, settings_for_guest
+        guest_settings = settings_for_guest(settings)
+        guest_app = create_app(guest_settings)
+        app.state.guest_app = guest_app
+        app.mount('/guest', guest_app)
+        app.add_middleware(GuestRoutingMiddleware,guest_app=guest_app,origin=settings.origin,
+                           guest_cookie=guest_settings.cookie_name,private_cookie=settings.cookie_name)
 
     return app
 

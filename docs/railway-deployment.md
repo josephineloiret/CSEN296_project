@@ -9,7 +9,7 @@ for current deployment status.
 
 ## Configuration
 
-Set `PUBLIC_GUEST_ENABLED=true` to mount the public demo at `/guest/`. It uses
+Set `PUBLIC_GUEST_ENABLED=true` to enable guest login on the main sign-in page; `/guest/` redirects there. It uses
 `/data/public-guest/refundguard.sqlite3`, a distinct cookie, published demo login,
 and local simulation with zero provider budget. The private root workspace
 retains its own accounts, database and model settings. Disable the flag and
