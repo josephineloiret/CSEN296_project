@@ -11,12 +11,12 @@ change as merged, deployed or verified beyond the evidence recorded here.
 
 ## Current checkpoint status
 
-Bucket 1 (`0c36520`) and Bucket 2 (`4ada65f`) were committed and verified pushed
-to `origin/silvias_additions`. Local/remote heads matched at `4ada65f` with a clean
-working tree before Bucket 3. Bucket 3 is included in the local checkpoint
-commit containing this version of the log on `silvias_additions`; GitHub push
-verification is recorded separately after success. No merge into main or deployment.
-Earlier entries retain their status at the time recorded.
+Buckets 1 (`0c36520`), 2 (`4ada65f`) and 3 (`7b6480e`) were committed and
+verified pushed to `origin/silvias_additions`. The latest main commit `a105c32`
+(Red Team evidence) has now been merged locally into `silvias_additions` as
+`e2dc2bd`, preserving both histories without conflicts. Combined validation is
+complete; publishing the merged result to GitHub/main is pending credential
+access. No deployment was performed. Earlier statuses are historical.
 
 ## 1. Repository preparation — update Silvia's branch
 
@@ -358,6 +358,42 @@ this is regression evidence for the covered paths, not comprehensive detection.
 PDF upload/parsing and arbitrary model-output redaction were not introduced.
 Verify the GitHub push of this checkpoint before the next bucket. Broader monitoring, an
 agreed staff access redesign and CWEval integration/report remain separate work.
+
+## 7. Prepare integration into main
+
+Requested November 12, 2026. Status: locally merged and validated; remote
+publication pending authenticated access. No force push or history rewrite.
+
+### Before integration
+
+- Silvia's pushed branch contained the three bucket commits through `7b6480e`.
+- Main had advanced to `a105c32`, adding the team's tracked historical
+  `redteam/results/campaign-local.json` evidence log.
+- No open pull request existed for this repository at inspection. GitHub reported
+  successful CI runs on Silvia's three bucket commits.
+
+### What changed and validation
+
+- Merged `origin/main` into `silvias_additions` as `e2dc2bd`, with no conflicts.
+- Preserved the tracked Red Team evidence unchanged. New campaign validation was
+  written outside the checkout so it did not overwrite historical evidence.
+- Combined suite: **164 tests plus 6 subtests passed**, no failures/skips;
+  17.85 seconds. Existing TestClient/httpx warning remains.
+- Secret scan: **0 flagged files**.
+- Synthetic campaign: **6/6 functional, 6/6 security and 6/6 joint** checks passed
+  under the explicitly documented Bucket 1 policy expectations.
+- GitHub CI for the pre-integration bucket commits was successful; CI for the
+  new integration commit can run only after it is pushed and is not yet verified.
+- Evidence: `main-merge-tests.txt`, `main-merge-tests.xml`, `main-merge-campaign.json`.
+
+### Publication boundary
+
+The user authorized merging the completed work into main. The prepared source
+branch contains current main, so a normal fast-forward remote update can preserve
+both histories. Publishing must fail rather than overwrite any incompatible
+concurrent main update. Remote publication and deployment must not be reported
+complete until verified. No additional application changes were made during
+integration.
 
 ## Decisions proposed but not implemented
 
