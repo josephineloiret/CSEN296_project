@@ -6,6 +6,25 @@ are synthetic. Local simulation runs without an API key or provider charges.
 
 ## Quick start
 
+### Public guest demo
+
+Open https://refundguard-production-11cb.up.railway.app/guest/ and sign in with
+`guest@refundguard.example` / `RefundGuard-Guest-2026!`. These credentials are
+intentionally public. Deployment requires `PUBLIC_GUEST_ENABLED=true`.
+
+The guest demo uses a separate database, separate session cookie and local
+simulation. Visitors can work with synthetic purchases/cases, run workflows,
+inspect balances and export demo evidence. Guest access cannot change passwords,
+MFA, team membership, policies, profiles or authority. All guest visitors share
+the disposable demo workspace and its mock weekly refund cap.
+
+The individual-account workspace remains at the root URL. Its settings, accounts,
+model provider and financial ledger are separate from the public demo.
+
+See the [website user guide](docs/RefundGuard_User_Guide.pdf).
+
+### Run locally
+
 Use Python 3.12 and run these commands from the repository root:
 
 ```sh

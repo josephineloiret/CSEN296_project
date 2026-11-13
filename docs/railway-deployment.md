@@ -9,6 +9,12 @@ for current deployment status.
 
 ## Configuration
 
+Set `PUBLIC_GUEST_ENABLED=true` to mount the public demo at `/guest/`. It uses
+`/data/public-guest/refundguard.sqlite3`, a distinct cookie, published demo login,
+and local simulation with zero provider budget. The private root workspace
+retains its own accounts, database and model settings. Disable the flag and
+redeploy to remove public guest access; guest records remain on the volume.
+
 Use the repository root as build context and `deploy/Dockerfile` as the build file.
 Set `RAILWAY_DOCKERFILE_PATH=deploy/Dockerfile` in Railway service variables
 before deploying this layout; see the [custom Dockerfile path instructions](https://docs.railway.com/builds/dockerfiles).
