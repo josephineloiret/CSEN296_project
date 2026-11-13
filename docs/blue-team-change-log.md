@@ -11,13 +11,12 @@ change as merged, deployed or verified beyond the evidence recorded here.
 
 ## Current checkpoint status
 
-Bucket 1 checkpoint `0c36520f35243cc1a3fa34c3e093c905b5d2c2c6` was committed
-and verified pushed to `origin/silvias_additions`; local and remote branch heads
-matched with a clean working tree at verification. No merge into main or deployment.
-Bucket 2 is included in the local checkpoint commit containing this version of
-the log on `silvias_additions`. GitHub push verification is recorded separately
-after it succeeds. No merge into main or deployment. Earlier entries retain
-their status at the time recorded.
+Bucket 1 (`0c36520`) and Bucket 2 (`4ada65f`) were committed and verified pushed
+to `origin/silvias_additions`. Local/remote heads matched at `4ada65f` with a clean
+working tree before Bucket 3. Bucket 3 is included in the local checkpoint
+commit containing this version of the log on `silvias_additions`; GitHub push
+verification is recorded separately after success. No merge into main or deployment.
+Earlier entries retain their status at the time recorded.
 
 ## 1. Repository preparation — update Silvia's branch
 
@@ -302,6 +301,63 @@ Verify the GitHub push of this checkpoint before the next implementation bucket.
 Assignment-based permissions, broad customer-activity monitoring and CWEval
 integration remain separate decisions/work. Newer main commits are not merged
 or assessed by this checkpoint.
+
+## 6. Bucket 3 — end-to-end provider privacy verification
+
+Completed locally November 12, 2026. Base: pushed Bucket 2 commit `4ada65f`.
+Status: included in this local Bucket 3 checkpoint; GitHub push pending verification.
+Not merged or deployed.
+
+### What was in the codebase before our changes
+
+- Buckets 1/2 already tested profile projection, recognized attacks, review
+  recovery, customer isolation and intercepted model-adapter payloads.
+- Transport/budget tests existed but did not cover the combined privacy boundary
+  for all supported free-text paths through real request serialization.
+- Structured bank fields were already excluded from generated profile documents;
+  other text paths still needed end-to-end verification, not another removal change.
+
+### What we changed
+
+- Added `tests/test_provider_privacy.py` with 19 transport-level cases.
+- Ran real adapters, JSON serialization and budget accounting against an
+  in-process HTTP mock transport; no actual provider/network calls.
+- Covered known references in names, notes, initial/follow-up messages, document
+  content/titles and queries; nested financial JSON; chunk-boundary fragments;
+  recognized attacks in supported sources; published policy poisoning; prior
+  summary input; timeouts; audited message recovery/replay; legacy profile replacement.
+- Required useful factual data and correct refund behavior in allowed scenarios,
+  not only absence of forbidden values. Confirmed harmless withholding markers
+  may be embedded while original recognized attack text stays out.
+- Added `docs/provider-privacy-verification.md` with a map of prior coverage,
+  new gaps addressed, reproduction commands and precise limitations.
+
+### Files touched / compatibility
+
+- New `tests/test_provider_privacy.py` and `docs/provider-privacy-verification.md`;
+  updated this master log. **No production-code changes.**
+- No new application dependencies, schema, UI/API, role, refund, campaign or
+  monitoring changes. Existing helper fixtures are reused without refactoring.
+- No production defect requiring a fix was demonstrated by these scenarios.
+
+### Verification and evidence
+
+- Focused suite: **19 passed**, 2.90 seconds.
+- Full suite: **164 tests plus 6 subtests passed**, no failures/skips; 17.29 seconds.
+- Existing TestClient/httpx deprecation warning remains.
+- Secret scan: **0 flagged files**; diff whitespace check passed.
+- Evidence: `bucket-3-focused-tests.txt`, `bucket-3-focused-tests.xml`,
+  `bucket-3-tests.txt`, `bucket-3-tests.xml`.
+- Synthetic records, temporary databases, in-process transport and fake provider
+  key only. No paid requests, hosted-service changes or claim of final CWEval evaluation.
+
+### Limits and remaining work
+
+Unknown financial numbers and unrecognized/obfuscated injections remain limitations;
+this is regression evidence for the covered paths, not comprehensive detection.
+PDF upload/parsing and arbitrary model-output redaction were not introduced.
+Verify the GitHub push of this checkpoint before the next bucket. Broader monitoring, an
+agreed staff access redesign and CWEval integration/report remain separate work.
 
 ## Decisions proposed but not implemented
 
