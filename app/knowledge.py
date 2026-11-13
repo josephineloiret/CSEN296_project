@@ -2,6 +2,9 @@ from uuid import uuid4
 import hashlib
 from sqlite_vec import serialize_float32
 from app.store import stamp
+from app.ai import InputReview
+from app.input_review import case_document_for_model
+from app.privacy import (WITHHELD, bank_references, document_text, model_text, profile_document)
 
 POLICY = '''RefundGuard sandbox policy v1
 Only synthetic purchases may be refunded. Verify order ownership and the original
@@ -21,7 +24,10 @@ class Knowledge:
         self.store, self.models = store, models
 
     def add(self, title, content, kind, customer_id, actor, index=True):
-        chunks = [content[start:start+1000] for start in range(0,len(content),850)]
+        projected = document_text(case_document_for_model(self.store,
+                                  {'title':title,'content':content,'kind':kind,'customer_id':customer_id}),
+                                  bank_references(self.store))
+        chunks = [projected[start:start+1000] for start in range(0,len(projected),850)]
         vectors = self.models.embedding(chunks) if index else []
         doc_id = 'DOC-' + uuid4().hex[:10].upper()
         with self.store.connect() as db:
@@ -71,8 +77,15 @@ class Knowledge:
     def initialize(self,index=True,customer_id=None):
         if not self.store.one("SELECT id FROM rg_documents WHERE title='Refund policy'"):
             self.add('Refund policy', POLICY, 'policy', None, 'system',index=index)
-        for profile in self.store.all('SELECT id FROM rg_profiles'):
-            if not self.store.one("SELECT id FROM rg_documents WHERE kind='customer' AND title=?",('Customer '+profile['id'],)):
+        references = bank_references(self.store)
+        for profile in self.store.all('SELECT id,name,notes FROM rg_profiles'):
+            expected = profile_document(profile, references)
+            current = self.store.one("SELECT content FROM rg_documents WHERE kind='customer' AND title=? "
+                                     "AND customer_id=? AND created_by='system' AND active=1",
+                                     ('Customer '+profile['id'],profile['id']))
+            if not current or current['content'] != expected:
+                # Supersede legacy model-facing copies before any provider call.
+                # Original profiles and inactive document history are retained.
                 self.sync_profile(profile['id'],index=False)
         if not index:
             return
@@ -82,7 +95,8 @@ class Knowledge:
         outdated = self.store.all('SELECT DISTINCT d.* FROM rg_documents d LEFT JOIN rg_chunks c ON d.id=c.document_id '
                                   'WHERE d.active=1 AND (c.id IS NULL OR c.embedding_kind<>?)'+scope,params)
         for document in outdated:
-            chunks = [document['content'][s:s+1000] for s in range(0,len(document['content']),850)]
+            projected = document_text(case_document_for_model(self.store,document), references)
+            chunks = [projected[s:s+1000] for s in range(0,len(projected),850)]
             vectors = self.models.embedding(chunks)
             with self.store.connect() as db:
                 db.execute('DELETE FROM rg_chunks WHERE document_id=?',(document['id'],))
@@ -91,13 +105,25 @@ class Knowledge:
                                (document['id'],n,chunk,serialize_float32(vector),self.models.embedding_kind))
 
     def sync_profile(self, profile_id,index=True):
-        import json
-        profile=self.store.one('SELECT id,name,bank_ref,notes FROM rg_profiles WHERE id=?',(profile_id,))
+        profile=self.store.one('SELECT id,name,notes FROM rg_profiles WHERE id=?',(profile_id,))
         if profile:
-            self.add('Customer '+profile_id,json.dumps(profile),'customer',profile_id,'system',index=index)
+            content = profile_document(profile, bank_references(self.store))
+            self.add('Customer '+profile_id,content,'customer',profile_id,'system',index=index)
 
     def search(self, query, customer_id, limit=5):
+        references = bank_references(self.store)
+        query = model_text(query, references, limit=14000)
+        if WITHHELD in query:
+            raise InputReview('Customer input requires human review. No automatic refund was authorized.')
         self.initialize(customer_id=customer_id)
+        # Inspect all active scoped sources, not only the top-ranked chunks.
+        # A recognized attack must not become safe merely by ranking lower.
+        sources = self.store.all(
+            "SELECT title,content,kind,customer_id FROM rg_documents WHERE active=1 AND (kind='policy' OR customer_id=?)",
+            (customer_id,))
+        if any(WITHHELD in document_text(case_document_for_model(self.store,row), references) or
+               WITHHELD in model_text(row['title'], references) for row in sources):
+            raise InputReview('Retrieved evidence requires human review. No automatic refund was authorized.')
         vector = serialize_float32(self.models.embedding([query])[0])
         # Scope is applied in SQL before any context is returned to an agent.
         with self.store.connect(vector=True) as db:
@@ -107,4 +133,5 @@ class Knowledge:
                               "WHERE d.active=1 AND c.embedding_kind=? AND (d.kind='policy' OR d.customer_id=?) "
                               'ORDER BY distance,c.id LIMIT ?',
                               (vector,self.models.embedding_kind,customer_id,limit)).fetchall()
-            return [dict(row) for row in rows]
+            return [{**dict(row), 'title':model_text(row['title'], references, limit=160),
+                     'content':model_text(row['content'], references)} for row in rows]

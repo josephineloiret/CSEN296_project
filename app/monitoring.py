@@ -16,7 +16,7 @@ ALLOWED = {'document_id','kind','version','sha256','run_id','mode','executed','s
 ALERT_ACTIONS = {'auth.login_failed','auth.mfa_failed','auth.mfa_enabled','auth.mfa_reset',
                  'security.denied','security.throttled','policy.submitted','policy.published',
                  'policy.rejected','policy.rollback','refund.blocked','authority.revoked',
-                 'workflow.busy','workflow.timeout','budget.exhausted','audit.delivery_failed',
+                 'workflow.input_review_required','workflow.busy','workflow.timeout','budget.exhausted','audit.delivery_failed',
                  'team.admin_link_created','team.admin_link_revoked','auth.team_invite_accepted',
                  'recovery.backup_failed'}
 

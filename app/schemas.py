@@ -193,3 +193,18 @@ class OrderInput(Input):
     @classmethod
     def product_text(cls,value):
         return one_line(value)
+
+
+class MessageReviewInput(Input):
+    body: str = Field(min_length=1,max_length=6000)
+    reason: str = Field(min_length=1,max_length=240)
+
+    @field_validator('body')
+    @classmethod
+    def reviewed_body(cls,value):
+        return several_lines(value)
+
+    @field_validator('reason')
+    @classmethod
+    def review_reason(cls,value):
+        return one_line(value)

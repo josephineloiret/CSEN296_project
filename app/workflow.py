@@ -6,7 +6,8 @@ from uuid import uuid4
 from threading import BoundedSemaphore
 import time
 from fastapi import HTTPException
-from app.ai import AGENTS, AIError, Plan, Summary
+from app.ai import AGENTS, AIError, InputReview, Plan, Summary
+from app.input_review import message_for_model
 from app.store import stamp
 from app.agents import IntakeAgent, RecordsAgent, RefundsAgent, EmailAgent, ReportingAgent
 
@@ -94,8 +95,12 @@ class Workflow:
             status = 'processed' if ledger else 'review'
             self.store.execute('UPDATE rg_cases SET status=?,rationale=?,updated_at=? WHERE id=?',
                                (status,message,stamp(),case_id))
-            self.store.trace(run_id,case_id,'Orchestrator','error',{'message':message,'executed':bool(ledger)})
-            self.store.event('orchestrator','workflow.interrupted',case_id,run_id=run_id,executed=bool(ledger))
+            held = isinstance(exc,InputReview)
+            self.store.trace(run_id,case_id,'Orchestrator','input_review_required' if held else 'error',
+                             {'message':message,'executed':bool(ledger)})
+            self.store.event(user['id'] if held else 'orchestrator',
+                             'workflow.input_review_required' if held else 'workflow.interrupted',
+                             case_id,run_id=run_id,executed=bool(ledger),customer_id=case['customer_id'])
             if isinstance(exc,AIError) and 'deadline' in str(exc).lower():
                 self.store.event('orchestrator','workflow.timeout',case_id,executed=bool(ledger))
         return self.store.case(case_id,user)
@@ -116,8 +121,8 @@ class Workflow:
         emit('Intake','assignment',self.intake.assign(cid))
         if not self.store.one("SELECT id FROM rg_messages WHERE case_id=? AND direction='outbound'",(cid,)):
             self.email(cid,'outbound','We received '+cid,'Your synthetic refund request has been received and assigned for review.')
-        incoming=self.store.all("SELECT body FROM rg_messages WHERE case_id=? AND direction='inbound' ORDER BY created_at DESC LIMIT 5",(cid,))
-        customer_content='\n'.join(m['body'] for m in reversed(incoming))[-12000:]
+        incoming=self.store.all("SELECT * FROM rg_messages WHERE case_id=? AND direction='inbound' ORDER BY created_at DESC LIMIT 5",(cid,))
+        customer_content='\n'.join(message_for_model(self.store,m) for m in reversed(incoming))[-12000:]
         context = self.records.retrieve(cid,customer_content+' refund '+case['reason_code'])
         remaining()
         emit('Records','retrieve',{'sources':context,'customer_id':case['customer_id'],'embedding':self.models.embedding_kind})

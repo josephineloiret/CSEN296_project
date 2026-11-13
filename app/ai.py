@@ -7,6 +7,7 @@ import httpx
 from pydantic import BaseModel, ConfigDict
 from typing import Literal
 from app.budget import BudgetExceeded
+from app.privacy import PROJECTION_VERSION, WITHHELD, bank_references, model_payload, model_text
 
 AGENTS = ['Intake', 'Records', 'Refunds', 'Email', 'Reporting']
 
@@ -32,6 +33,11 @@ class Summary(Structured):
 class AIError(Exception):
     pass
 
+class InputReview(AIError):
+    """Expected model-input hold, distinct from a provider/system failure."""
+    pass
+
+
 class Models:
     def __init__(self, settings, budget=None):
         self.settings = settings
@@ -43,9 +49,12 @@ class Models:
 
     @property
     def embedding_kind(self):
-        return ('openai:' + self.settings.embedding_model + ':384') if self.settings.provider=='openai' else 'local-hash-v1:384'
+        base = ('openai:' + self.settings.embedding_model + ':384') if self.settings.provider=='openai' else 'local-hash-v1:384'
+        return base + ':' + PROJECTION_VERSION
 
     def embedding(self, texts):
+        references = bank_references(self.budget.store) if self.budget else ()
+        texts = [model_text(text, references) for text in texts]
         if self.settings.provider == 'openai':
             result = self._post('/embeddings', {'model':self.settings.embedding_model, 'input':texts, 'dimensions':384})
             vectors = [item['embedding'] for item in sorted(result['data'], key=lambda x:x['index'])]
@@ -89,6 +98,10 @@ class Models:
     def structured(self, role, data, schema):
         if self.settings.provider != 'openai':
             raise AIError('No LLM is active in local simulation mode')
+        references = bank_references(self.budget.store) if self.budget else ()
+        data = model_payload(data, references)
+        if WITHHELD in json.dumps(data):
+            raise InputReview('Model input requires human review.')
         result = self._post('/responses', {
             'model':self.settings.model, 'store':False, 'max_output_tokens':1600,
             'reasoning':{'effort':self.settings.reasoning_effort},

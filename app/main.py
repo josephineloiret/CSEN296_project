@@ -18,13 +18,14 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from app.ai import AIError, Models
+from app.ai import AIError, InputReview, Models
+from app.input_review import message_review, save_review
 from app.config import Settings
 from app.knowledge import Knowledge
 from app.schemas import (CASE_ID, CUSTOMER_ID, DOCUMENT_ID, LINK_ID, USER_ID, AcceptInvite,
                          ActiveInput, CaseInput, DocumentInput, Invitation, Login, MessageInput,
                          OrderInput, PasswordInput, ProfileInput, SearchInput, Setup,
-                         SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken)
+                         SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken, MessageReviewInput)
 from app.mfa import MFA, router as mfa_router
 from app.monitoring import signed_evidence
 from app.security import (DUMMY_HASH, PASSWORDS, create_user, current_user, digest,
@@ -131,6 +132,10 @@ def create_app(settings=None):
     async def validation_error(request, exc):
         # Pydantic errors can echo secrets and bodies; return only safe field locations/messages.
         return JSONResponse({'detail':[{'loc':list(e['loc']), 'msg':e['msg']} for e in exc.errors()]},422)
+
+    @app.exception_handler(InputReview)
+    async def input_review_error(request, exc):
+        return JSONResponse({'detail':str(exc)},409)
 
     @app.exception_handler(AIError)
     async def model_error(request, exc):
@@ -426,6 +431,9 @@ def create_app(settings=None):
         case=get_case(cid,user)
         result={'case':case,'messages':store.all('SELECT * FROM rg_messages WHERE case_id=? ORDER BY created_at',(cid,))}
         if user['role']!='customer':
+            for message in result['messages']:
+                if message['direction']=='inbound':
+                    message['input_review']=message_review(store,message)
             result['traces']=store.all('SELECT * FROM rg_traces WHERE case_id=? ORDER BY id',(cid,))
             result['execution']=store.one('SELECT decision_json FROM ledger WHERE case_id=?',(cid,))
         else:
@@ -467,6 +475,15 @@ def create_app(settings=None):
                       (str(uuid4()),cid,'inbound',body.subject,body.body,'support@example.test',stamp()))
         store.event(user['id'],'email.received',cid)
         return {'ok':True}
+
+    @app.post('/api/cases/{cid}/messages/{mid}/review')
+    def review_message(cid:str,mid:str,body:MessageReviewInput,user=Depends(current_user)):
+        require_role(user,'admin','supervisor')
+        get_case(cid,user)
+        require_path_id(mid,USER_ID,'message id')
+        throttle(store,'input-review:'+user['id'],20,3600)
+        review=save_review(store,cid,mid,user,body.body,body.reason)
+        return {'review':review,'refund_executed':False}
 
     @app.get('/api/messages')
     def messages(user=Depends(current_user)):
