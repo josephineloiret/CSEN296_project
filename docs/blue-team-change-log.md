@@ -11,11 +11,13 @@ change as merged, deployed or verified beyond the evidence recorded here.
 
 ## Current checkpoint status
 
-Bucket 1 and its close-out are included in the local commit containing this
-version of the log on `silvias_additions`. The baseline assessment is included
-as supporting documentation. No push, merge into `main`, or deployment is part
-of this checkpoint. Earlier entries retain their status at the time recorded.
-Use `git log -1 -- docs/blue-team-change-log.md` for its commit identifier.
+Bucket 1 checkpoint `0c36520f35243cc1a3fa34c3e093c905b5d2c2c6` was committed
+and verified pushed to `origin/silvias_additions`; local and remote branch heads
+matched with a clean working tree at verification. No merge into main or deployment.
+Bucket 2 is included in the local checkpoint commit containing this version of
+the log on `silvias_additions`. GitHub push verification is recorded separately
+after it succeeds. No merge into main or deployment. Earlier entries retain
+their status at the time recorded.
 
 ## 1. Repository preparation — update Silvia's branch
 
@@ -244,6 +246,62 @@ sanitized metadata rather than bank references or raw messages. Existing case
 creation logs actor/case/order and can be joined to the customer; volume/fraud
 aggregation is not yet implemented. No recurring automation or external alert
 recipient was configured.
+
+## 5. Bucket 2 — dedicated Records/RAG data-access tests
+
+Completed locally November 12, 2026. Base: pushed Bucket 1 commit `0c36520`.
+Status: included in this local Bucket 2 checkpoint; GitHub push pending verification.
+Not merged or deployed.
+
+### What was in the codebase before our changes
+
+- Records derived customer scope from the stored case and RAG applied a scoped SQL filter.
+- Prior tests covered some isolation and policy transitions, but did not provide
+  focused positive/negative evidence for top-k filtering, provider-input scope,
+  deferred embedding, concurrent customers and complete source/text exclusion.
+- Staff had broad case access; customers could not directly call RAG search.
+
+### What we changed
+
+- Added `tests/test_records_access.py` with 22 cases covering reciprocal customer
+  isolation; a foreign nearest neighbor excluded before LIMIT; query scope
+  manipulation; internal/HTTP unknown and forged case IDs; nonstaff denial;
+  allowed staff search; client-supplied scope rejection; policy publication,
+  rejection, supersession and rollback; customer-document versions; lazy indexing;
+  concurrent scopes; provider payloads and workflow traces.
+- Every positive retrieval scenario requires authorized data, avoiding a vacuous
+  pass from denying everything. Synthetic nonfinancial markers distinguish access
+  filtering from Bucket 1 bank-reference redaction.
+- Added `docs/records-access-tests.md` with reproduction, outcomes and limitations.
+- Updated this master log and carried forward the verified Bucket 1 push status.
+
+### Code blocks touched and compatibility
+
+- New test module and documentation only. **No production-code changes.**
+- Existing test helpers are reused; no broad test-fixture refactor.
+- No permission redesign, UI/API interface changes, schema migration, refund
+  changes, monitoring expansion or Red Team campaign changes.
+- No defect requiring a production fix was demonstrated by these scenarios.
+- Bucket 2 checks the current role policy; it does not establish that broad member
+  access is the desired least-privilege policy or add human case assignment.
+
+### Verification and evidence
+
+- Focused suite: **22 passed**, 3.24 seconds.
+- Full suite: **145 tests plus 6 subtests passed**, no failures/skips; 15.28 seconds.
+- Existing TestClient/httpx deprecation warning remains.
+- Secret scan: **0 flagged files**; diff whitespace check passed.
+- Evidence: `bucket-2-focused-tests.txt`, `bucket-2-focused-tests.xml`,
+  `bucket-2-tests.txt`, `bucket-2-tests.xml`.
+- Temporary synthetic databases and mocked provider transport; no paid model
+  calls or hosted-service changes. No claim of final CWEval evaluation.
+
+### Remaining work
+
+Verify the GitHub push of this checkpoint before the next implementation bucket.
+Assignment-based permissions, broad customer-activity monitoring and CWEval
+integration remain separate decisions/work. Newer main commits are not merged
+or assessed by this checkpoint.
 
 ## Decisions proposed but not implemented
 
