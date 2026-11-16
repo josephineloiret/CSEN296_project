@@ -4,7 +4,7 @@ from sqlite_vec import serialize_float32
 from app.store import stamp
 from app.ai import InputReview
 from app.input_review import case_document_for_model
-from app.privacy import (WITHHELD, bank_references, document_text, model_text, profile_document)
+from app.privacy import (WITHHELD, bank_references, disguised_instruction, document_text, model_text, profile_document)
 
 POLICY = '''RefundGuard sandbox policy v1
 Only synthetic purchases may be refunded. Verify order ownership and the original
@@ -56,6 +56,8 @@ class Knowledge:
             row = db.execute("SELECT * FROM rg_documents WHERE id=? AND kind='policy'",(doc_id,)).fetchone()
             if not row:
                 raise ValueError('Policy not found')
+            if action != 'reject' and disguised_instruction(row['content']):
+                raise ValueError('This policy contains hidden instructions and cannot be published.')
             if row['created_by'] == actor:
                 raise ValueError('A different administrator or supervisor must review this policy')
             if action == 'reject':
