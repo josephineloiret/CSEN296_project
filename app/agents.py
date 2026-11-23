@@ -18,14 +18,19 @@ class IntakeAgent:
         return {'case_id':case_id,'assigned_agent':case['agent_id'],'customer_id':case['customer_id']}
 
 class RecordsAgent:
-    def __init__(self, store, knowledge):
+    def __init__(self, store, knowledge, case_files):
         self.store,self.knowledge=store,knowledge
+        self.case_files=case_files
 
     def retrieve(self, case_id, query):
         case=self.store.one('SELECT customer_id FROM rg_cases WHERE id=?',(case_id,))
         if not case:
             raise AIError('No authorized records scope exists for this case')
         return self.knowledge.search(query,case['customer_id'])
+
+    def retrieve_case_files(self, case_id, query, user):
+        return self.case_files.search(case_id, query, user)
+
 
 class RefundsAgent:
     def __init__(self, models):

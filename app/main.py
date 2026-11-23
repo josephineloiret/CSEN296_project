@@ -20,10 +20,12 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.ai import AIError, InputReview, Models
 from app.input_review import message_review, save_review
+from app.case_files import CaseFiles, REVIEWERS
 from app.config import Settings
+from app.drive_files import DriveFileError, DriveFiles
 from app.knowledge import Knowledge
 from app.schemas import (CASE_ID, CUSTOMER_ID, DOCUMENT_ID, LINK_ID, USER_ID, AcceptInvite,
-                         ActiveInput, CaseInput, DocumentInput, Invitation, Login, MessageInput,
+                         ActiveInput, CaseInput, CaseFileAssignment, CaseFileImport, CaseFileSearch, DocumentInput, Invitation, Login, MessageInput,
                          OrderInput, PasswordInput, ProfileInput, SearchInput, Setup,
                          SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken, MessageReviewInput)
 from app.mfa import MFA, router as mfa_router
@@ -49,7 +51,8 @@ def create_app(settings=None):
     store.seed()
     knowledge.initialize(index=settings.provider=='local')
     store.bootstrap_token()
-    workflow = Workflow(store,knowledge,models)
+    case_files = CaseFiles(store, DriveFiles(settings))
+    workflow = Workflow(store,knowledge,models,case_files)
     @asynccontextmanager
     async def lifespan(application):
         task = None
@@ -80,6 +83,7 @@ def create_app(settings=None):
                 pass
     app = FastAPI(title='RefundGuard', docs_url=None, redoc_url=None, openapi_url=None,lifespan=lifespan)
     app.state.store, app.state.workflow, app.state.knowledge = store,workflow,knowledge
+    app.state.case_files=case_files
     app.state.budget=budget
     app.state.mfa = MFA(store)
     app.include_router(mfa_router(app.state.mfa))
@@ -136,6 +140,13 @@ def create_app(settings=None):
     @app.exception_handler(InputReview)
     async def input_review_error(request, exc):
         return JSONResponse({'detail':str(exc)},409)
+
+    @app.exception_handler(DriveFileError)
+    async def drive_file_error(request, exc):
+        if exc.status == 404:
+            store.event(request.state.audit_actor, 'security.denied', code=404,
+                        route=request.scope['route'].path)
+        return JSONResponse({'detail':str(exc)}, status_code=exc.status)
 
     @app.exception_handler(AIError)
     async def model_error(request, exc):
@@ -436,10 +447,37 @@ def create_app(settings=None):
                     message['input_review']=message_review(store,message)
             result['traces']=store.all('SELECT * FROM rg_traces WHERE case_id=? ORDER BY id',(cid,))
             result['execution']=store.one('SELECT decision_json FROM ledger WHERE case_id=?',(cid,))
+            documents = case_files.details(cid, user)
+            if documents is not None:
+                result['case_files'] = documents
         else:
             result['messages']=[m for m in result['messages'] if m['direction']!='draft']
             result['case']={k:v for k,v in case.items() if k not in ('summary','run_id','created_by')}
         return result
+
+    @app.put('/api/cases/{cid}/files/assignment')
+    def assign_case_files(cid: str, body: CaseFileAssignment, user=Depends(current_user)):
+        require_role(user, *REVIEWERS)
+        get_case(cid, user)
+        throttle(store, 'case-file-assignment:'+user['id'], 40, 3600)
+        case_files.assign(cid, body.user_id, user)
+        return {'ok': True}
+
+    @app.post('/api/cases/{cid}/files/import')
+    def import_case_file(cid: str, body: CaseFileImport, user=Depends(current_user)):
+        require_role(user, *REVIEWERS)
+        get_case(cid, user)
+        if not settings.drive_import_enabled:
+            raise DriveFileError('Drive case file import is unavailable.', 503)
+        throttle(store, 'case-file-import:'+user['id'], 15, 3600)
+        return case_files.import_pdf(cid, body.source, user)
+
+    @app.post('/api/cases/{cid}/files/search')
+    def search_case_files(cid: str, body: CaseFileSearch, user=Depends(current_user)):
+        require_role(user, *STAFF)
+        get_case(cid, user)
+        throttle(store, 'case-file-search:'+user['id'], 50, 3600)
+        return workflow.records.retrieve_case_files(cid, body.query, user)
 
     @app.post('/api/cases/{cid}/run')
     def run_case(cid:str,user=Depends(current_user)):

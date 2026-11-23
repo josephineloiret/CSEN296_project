@@ -41,6 +41,19 @@ CREATE TABLE IF NOT EXISTS rg_cases (
  created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
  summary TEXT NOT NULL DEFAULT '', run_id TEXT, attempts INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS rg_case_file_assignments (
+ case_id TEXT PRIMARY KEY REFERENCES rg_cases(id), user_id TEXT NOT NULL REFERENCES rg_users(id)
+);
+CREATE TABLE IF NOT EXISTS rg_case_files (
+ id TEXT PRIMARY KEY, case_id TEXT NOT NULL REFERENCES rg_cases(id),
+ drive_file_id TEXT UNIQUE NOT NULL, title TEXT NOT NULL,
+ imported_by TEXT NOT NULL REFERENCES rg_users(id), imported_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rg_case_files_by_case ON rg_case_files(case_id);
+CREATE TABLE IF NOT EXISTS rg_case_file_chunks (
+ file_id TEXT NOT NULL REFERENCES rg_case_files(id), chunk_no INTEGER NOT NULL,
+ content TEXT NOT NULL, embedding BLOB NOT NULL, PRIMARY KEY(file_id, chunk_no)
+);
 CREATE TABLE IF NOT EXISTS rg_documents (
  id TEXT PRIMARY KEY, title TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('policy','customer')),
  customer_id TEXT REFERENCES rg_profiles(id), content TEXT NOT NULL, version INTEGER NOT NULL,

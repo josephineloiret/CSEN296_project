@@ -63,16 +63,7 @@ class Models:
             if len(vectors)!=len(texts) or any(len(v)!=384 or not all(math.isfinite(x) for x in v) for v in vectors):
                 raise AIError('Invalid embedding response')
             return vectors
-        vectors = []
-        for text in texts:
-            vector = [0.0]*384
-            tokens = re.findall(r'[a-z0-9]+', text.lower()) or ['empty']
-            for token in tokens:
-                raw = hashlib.sha256(token.encode()).digest()
-                vector[int.from_bytes(raw[:4],'little') % 384] += 1 if raw[4] % 2 else -1
-            norm = math.sqrt(sum(x*x for x in vector)) or 1
-            vectors.append([x/norm for x in vector])
-        return vectors
+        return local_embeddings(texts)
 
     def _post(self, path, payload):
         from app.execution import remaining
@@ -132,3 +123,17 @@ class Models:
         if canary in content or canary in answer or instruction_attack(answer) or unexpected_amount(answer, allowed_amounts(data)):
             raise InputReview('Model output requires human review.')
         return parsed
+
+
+def local_embeddings(texts):
+    """Generate the lexical vectors used in local mode."""
+    vectors = []
+    for text in texts:
+        vector = [0.0]*384
+        tokens = re.findall(r'[a-z0-9]+', text.lower()) or ['empty']
+        for token in tokens:
+            raw = hashlib.sha256(token.encode()).digest()
+            vector[int.from_bytes(raw[:4],'little') % 384] += 1 if raw[4] % 2 else -1
+        norm = math.sqrt(sum(x*x for x in vector)) or 1
+        vectors.append([x/norm for x in vector])
+    return vectors

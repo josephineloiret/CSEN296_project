@@ -28,6 +28,13 @@ class Settings:
     team_invite_hash: str = field(default='',repr=False)
     team_invite_expires: float = 0
 
+    drive_folder_id: str = ""
+    drive_service_account_json: str = field(default="", repr=False)
+
+    @property
+    def drive_import_enabled(self):
+        return bool(self.drive_folder_id and self.drive_service_account_json)
+
     @classmethod
     def from_env(cls):
         railway=bool(os.getenv('RAILWAY_PROJECT_ID'))
@@ -48,7 +55,9 @@ class Settings:
                    audit_directory=os.getenv('AUDIT_DIRECTORY',''),
                    mfa_encryption_key=os.getenv('MFA_ENCRYPTION_KEY',''),
                    team_invite_hash=os.getenv('TEAM_INVITE_TOKEN_HASH',''),
-                   team_invite_expires=float(os.getenv('TEAM_INVITE_EXPIRES','0')))
+                   team_invite_expires=float(os.getenv('TEAM_INVITE_EXPIRES','0')),
+                   drive_folder_id=os.getenv('DRIVE_CASE_FILES_FOLDER_ID', '').strip(),
+                   drive_service_account_json=os.getenv('DRIVE_CASE_FILES_SERVICE_ACCOUNT_JSON', ''))
 
     def validate(self):
         if self.team_invite_hash:

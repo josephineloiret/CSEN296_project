@@ -414,3 +414,85 @@ For each completed bucket, append:
 5. Tests/evidence and results, including failures and limitations.
 6. Compatibility impact and coordination needed.
 7. Commit/PR/merge/deployment references when they actually exist.
+
+
+## Drive case-file import and assigned staff access
+
+Implemented locally on November 23, 2026, on `silvias_additions` from
+`23158b0`. This implements the selected single-folder Drive import and
+assignment-based access for the new case files.
+
+### Before
+
+The Knowledge browser form accepted pasted text and could populate the form
+from a local TXT or Markdown file. The server indexed that text by customer.
+It had no Drive client, PDF parser, or staff-to-case assignment for documents.
+
+### Changes and teammate impact
+
+- `app/drive_files.py`, `app/config.py`, and `config/local.env.example` add
+  optional read-only Google Drive PDF import. The importer validates the configured
+  folder, file type, size, and download integrity before indexing.
+  `requirements/runtime.txt` and `requirements/lock.txt` add the client and PDF
+  parser dependencies.
+- `app/case_files.py` and `app/store.py` store one indexed snapshot per Drive
+  file and scope it to one case. Supervisors and admins manage imports and
+  staff assignments. Assigned members can retrieve passages. Reassignment
+  revokes the old member's access. Imports and assignments produce audit events.
+- `app/main.py`, `app/schemas.py`, and `app/static/app.js` expose the controls
+  in the case view. `app/agents.py`, `app/workflow.py`, and `app/ai.py` connect
+  the staff-facing Records Agent search to the existing local vector algorithm.
+  Imported text stays out of shared Knowledge, external embeddings, and Alex's
+  automated refund and email paths. The assignment applies only to imported
+  case files. The app's broader staff access remains in place.
+- `docs/drive-case-files.md` and `docs/user-guide.md` describe setup and the
+  demo. The team must share the demo folder as Viewer with the dedicated
+  service account and inject its credentials as an app secret. A Drive-side
+  change does not remove an already indexed snapshot from RefundGuard.
+
+### Validation
+
+- Pre-change baseline on `23158b0`: 168 tests and 6 subtests passed.
+- Final suite: 182 tests and 6 subtests passed. `tests/test_case_files.py`
+  added 14 checks covering mocked OAuth and Drive calls, real synthetic PDF
+  parsing, reassignment, same-customer case isolation, retries, and local
+  search when the app is in live model mode.
+- A DOM smoke test against the running app verified the supervisor/admin
+  controls and assigned versus unassigned staff views using a mocked Drive
+  backend. Full-browser automation could not launch in this environment.
+- Dependency consistency check and lockfile vulnerability audit passed.
+  Secret scan found zero flagged files. JavaScript syntax and diff whitespace
+  checks passed.
+- Live Drive access and deployment are pending service-account configuration.
+  No commit, push, or merge was made during this implementation.
+
+
+## Bucket 4 - Appendix H benchmarking evidence
+
+November 23, 2026. Ran a CWEval-style application evaluation using
+`app.benchmarks.run_benchmarks()` and selected existing pytest checks.
+Compared a clean archive of main at `23158b0` with the local
+`silvias_additions` working tree at the same commit plus the Drive changes.
+
+| Build and task set | Functional | Security | Joint |
+| --- | ---: | ---: | ---: |
+| Baseline, shared tasks | 10/10 | 10/10 | 10/10 |
+| Candidate, shared tasks | 10/10 | 10/10 | 10/10 |
+| Candidate, all tasks | 11/11 | 11/11 | 11/11 |
+
+The shared tasks covered seven refund execution controls, customer-scoped
+Records search, policy lifecycle, and provider-boundary redaction. The Drive
+assignment scenario was candidate-only and passed with mocked Drive.
+The existing assertions yielded 10 baseline and 12 candidate pytest cases
+in addition to seven execution-control pairs per build.
+
+Candidate source fingerprint (SHA-256 across app, tests, and requirements):
+`b04af8b7adb6e761219b80993a3715da24dbf1588e1138762c74f5f95b0b056d`.
+
+The report is `refundguard-appendix-h-benchmark.pdf` in the November 23 study
+workspace outputs. It includes each test input, functional and security
+observations, retest outcomes, and exact source test selectors. Machine-readable
+runner output and JUnit evidence are retained in the same workspace under
+`work/appendix-h/`. Preserve the denominators when transferring the results
+into the final report. Live Drive and model evaluation, deployment verification,
+and any instructor-required upstream CWEval run remain open.
