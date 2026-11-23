@@ -75,6 +75,11 @@ chunks, versions and source IDs. Customer-scoped documents cannot be retrieved
 for another customer's case. In local mode vectors represent lexical token
 similarity; live mode uses learned semantic embeddings.
 
+Drive PDFs can be imported into **Case files** when a project folder is
+configured. Supervisors and admins can import PDFs and assign staff access to the case files.
+The assigned staff member can search passages in the case view.
+See the [Drive case files guide](drive-case-files.md) for the demo workflow.
+
 ## Inbox and records
 
 The inbox organizes inbound messages, outbound mock notices, and drafts by

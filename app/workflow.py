@@ -14,10 +14,10 @@ from app.agents import IntakeAgent, RecordsAgent, RefundsAgent, EmailAgent, Repo
 _DESTINATION_HEADER_RE = re.compile(r'(?im)^[ \t]*(?:to|cc|bcc)[ \t]*:[^\r\n]*(?:\r?\n|$)')
 
 class Workflow:
-    def __init__(self, store, knowledge, models):
+    def __init__(self, store, knowledge, models, case_files):
         self.store, self.knowledge, self.models = store, knowledge, models
         self.intake=IntakeAgent(store)
-        self.records=RecordsAgent(store,knowledge)
+        self.records=RecordsAgent(store,knowledge,case_files)
         self.refunds_agent=RefundsAgent(models)
         self.email_agent=EmailAgent(models)
         self.reporting=ReportingAgent(store)

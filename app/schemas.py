@@ -143,6 +143,25 @@ class SearchInput(Input):
     def case(cls,value):
         return shaped_id(value, CASE_ID, 'case id')
 
+class CaseFileImport(Input):
+    source: str = Field(min_length=1, max_length=400)
+
+class CaseFileAssignment(Input):
+    user_id: str | None
+    @field_validator('user_id')
+    @classmethod
+    def member_id(cls, value):
+        if value is None:
+            return None
+        return shaped_id(value, USER_ID, 'member id')
+
+class CaseFileSearch(Input):
+    query: str = Field(min_length=1, max_length=2000)
+    @field_validator('query')
+    @classmethod
+    def query_text(cls, value):
+        return one_line(value)
+
 class PolicyReview(Input):
     action: Literal['publish','reject','rollback']
 
