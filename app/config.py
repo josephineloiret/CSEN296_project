@@ -27,6 +27,8 @@ class Settings:
     mfa_encryption_key: str = field(default='',repr=False)
     team_invite_hash: str = field(default='',repr=False)
     team_invite_expires: float = 0
+    public_guest_enabled: bool = False
+    guest_workspace: bool = False
 
     drive_folder_id: str = ""
     drive_service_account_json: str = field(default="", repr=False)
@@ -56,10 +58,13 @@ class Settings:
                    mfa_encryption_key=os.getenv('MFA_ENCRYPTION_KEY',''),
                    team_invite_hash=os.getenv('TEAM_INVITE_TOKEN_HASH',''),
                    team_invite_expires=float(os.getenv('TEAM_INVITE_EXPIRES','0')),
+                   public_guest_enabled=os.getenv('PUBLIC_GUEST_ENABLED','false').lower() in ('true','1'),
                    drive_folder_id=os.getenv('DRIVE_CASE_FILES_FOLDER_ID', '').strip(),
                    drive_service_account_json=os.getenv('DRIVE_CASE_FILES_SERVICE_ACCOUNT_JSON', ''))
 
     def validate(self):
+        if self.guest_workspace and (self.provider != 'local' or self.api_key):
+            raise ValueError('The public guest workspace must use local simulation without a provider key')
         if self.team_invite_hash:
             import re
             import math
@@ -92,4 +97,6 @@ class Settings:
 
     @property
     def cookie_name(self):
+        if self.guest_workspace:
+            return '__Host-refundguard-demo' if self.production else 'refundguard_demo'
         return '__Host-refundguard' if self.production else 'refundguard_local'

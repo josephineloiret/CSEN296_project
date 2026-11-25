@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -49,6 +49,9 @@ def create_app(settings=None):
     models = Models(settings,budget)
     knowledge = Knowledge(store, models)
     store.seed()
+    if settings.guest_workspace:
+        from app.guest import seed_guest
+        seed_guest(store)
     knowledge.initialize(index=settings.provider=='local')
     store.bootstrap_token()
     case_files = CaseFiles(store, DriveFiles(settings))
@@ -94,11 +97,13 @@ def create_app(settings=None):
 
     @app.middleware('http')
     async def boundary(request, call_next):
+        from app.guest import relative_path
+        path = relative_path(request)
         # Railway probes use HTTP and a platform hostname. This narrow exception
         # serves only liveness; it never reaches account/data routes.
         if settings.railway and request.method=='GET' and request.url.path=='/health' and request.url.hostname=='healthcheck.railway.app':
             return JSONResponse({'status':'ok','application':'refundguard'},headers={'Cache-Control':'no-store'})
-        if request.method not in ('GET','HEAD','OPTIONS') and request.url.path.startswith('/api/'):
+        if request.method not in ('GET','HEAD','OPTIONS') and path.startswith('/api/'):
             if request.headers.get('origin') != settings.origin:
                 return JSONResponse({'detail':'Request origin was not accepted'},403)
             if not request.headers.get('content-type','').lower().startswith('application/json'):
@@ -158,7 +163,8 @@ def create_app(settings=None):
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request, exc):
-        if exc.status_code in (401,403,429) and request.url.path.startswith('/api/'):
+        from app.guest import relative_path
+        if exc.status_code in (401,403,429) and relative_path(request).startswith('/api/'):
             route = getattr(request.scope.get('route'), 'path', '/api/unknown')
             store.event(getattr(request.state,'audit_actor','anonymous'),
                         'security.throttled' if exc.status_code==429 else 'security.denied',
@@ -186,7 +192,9 @@ def create_app(settings=None):
 
     @app.get('/api/auth/status')
     def auth_status():
-        return {'setup_required':not bool(store.one('SELECT id FROM rg_users LIMIT 1'))}
+        return {'setup_required':not bool(store.one('SELECT id FROM rg_users LIMIT 1')),
+                'guest_workspace':settings.guest_workspace,
+                'guest_demo_url':'/' if settings.public_guest_enabled else None}
 
     @app.post('/api/auth/setup')
     def setup(body:Setup,request:Request,response:Response):
@@ -211,7 +219,7 @@ def create_app(settings=None):
     @app.post('/api/auth/login')
     def login(body:Login,request:Request,response:Response):
         throttle(store,'login-ip:'+peer(request),40)
-        throttle(store,'login-account:'+body.email,8)
+        throttle(store,'login-account:'+body.email,200 if settings.guest_workspace else 8)
         user=store.one('SELECT * FROM rg_users WHERE email=?',(body.email,))
         valid=verify_password(user['password_hash'] if user else DUMMY_HASH,body.password)
         if not user or not valid or not user['active']:
@@ -221,7 +229,15 @@ def create_app(settings=None):
             store.execute('UPDATE rg_users SET password_hash=? WHERE id=?',(hash_password(body.password),user['id']))
         csrf=new_session(store,user['id'],response,request.cookies.get(settings.cookie_name))
         store.event(user['id'],'auth.login')
-        return {'user':public_user(user),'csrf':csrf}
+        if settings.guest_workspace:
+            from dataclasses import replace
+            response.delete_cookie(replace(settings,guest_workspace=False).cookie_name,path='/',
+                                   secure=settings.production,httponly=True,samesite='strict')
+        elif settings.public_guest_enabled:
+            from app.guest import settings_for_guest
+            response.delete_cookie(settings_for_guest(settings).cookie_name,path='/',
+                                   secure=settings.production,httponly=True,samesite='strict')
+        return {'user':public_user(user),'csrf':csrf,'guest_workspace':settings.guest_workspace}
 
     @app.post('/api/auth/accept-invite')
     def accept_invite(body:AcceptInvite,request:Request,response:Response):
@@ -301,7 +317,8 @@ def create_app(settings=None):
         return {'user':public_user(user),'csrf':user['csrf'],'mode':models.mode,
                 'embeddings':models.embedding_kind,'authority_active':store.authority_active(),
                 'mfa_enabled':app.state.mfa.enabled(user['id']),
-                'mfa_required':app.state.mfa.required(user) and not user['mfa_verified']}
+                'mfa_required':app.state.mfa.required(user) and not user['mfa_verified'],
+                'guest_workspace':settings.guest_workspace}
 
     @app.get('/api/usage')
     def usage(user=Depends(current_user)):
@@ -312,7 +329,8 @@ def create_app(settings=None):
     @app.post('/api/auth/logout')
     def logout(request:Request,response:Response,user=Depends(current_user)):
         store.execute('DELETE FROM rg_sessions WHERE token_hash=?',(digest(request.cookies.get(settings.cookie_name,'')),))
-        response.delete_cookie(settings.cookie_name,path='/')
+        response.delete_cookie(settings.cookie_name,path='/',secure=settings.production,
+                               httponly=True,samesite='strict')
         store.event(user['id'],'auth.logout')
         return {'ok':True}
 
@@ -410,6 +428,8 @@ def create_app(settings=None):
     @app.post('/api/orders')
     def add_order(body:OrderInput,user=Depends(current_user)):
         require_role(user,*STAFF)
+        if settings.guest_workspace:
+            throttle(store,'guest-order-create:'+user['id'],40,3600)
         if not store.one('SELECT id FROM rg_profiles WHERE id=?',(body.customer_id,)):
             raise HTTPException(404,'Customer not found')
         oid='ORDER-'+uuid4().hex[:8].upper()
@@ -582,7 +602,8 @@ def create_app(settings=None):
 
     @app.get('/api/reports/export')
     def export(user=Depends(current_user)):
-        require_role(user,'admin','supervisor')
+        if not settings.guest_workspace:
+            require_role(user,'admin','supervisor')
         store.event(user['id'],'report.exported')
         return JSONResponse(reports(user),headers={'Content-Disposition':'attachment; filename="refundguard-evidence.json"'})
 
@@ -608,7 +629,8 @@ def create_app(settings=None):
 
     @app.post('/api/benchmarks/run')
     def benchmark(user=Depends(current_user)):
-        require_role(user,'admin','supervisor')
+        if not settings.guest_workspace:
+            require_role(user,'admin','supervisor')
         throttle(store,'benchmark:'+user['id'],6,3600)
         from app.benchmarks import run_benchmarks
         result=run_benchmarks()
@@ -623,6 +645,20 @@ def create_app(settings=None):
     @app.get('/')
     def index():
         return FileResponse(STATIC/'index.html')
+
+    @app.get('/guest')
+    @app.get('/guest/')
+    def guest_redirect():
+        return RedirectResponse('/',status_code=307)
+
+    if settings.public_guest_enabled:
+        from app.guest import GuestRoutingMiddleware, settings_for_guest
+        guest_settings = settings_for_guest(settings)
+        guest_app = create_app(guest_settings)
+        app.state.guest_app = guest_app
+        app.mount('/guest', guest_app)
+        app.add_middleware(GuestRoutingMiddleware,guest_app=guest_app,origin=settings.origin,
+                           guest_cookie=guest_settings.cookie_name,private_cookie=settings.cookie_name)
 
     return app
 

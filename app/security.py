@@ -80,6 +80,10 @@ def current_user(request: Request):
     if request.method not in ('GET','HEAD','OPTIONS'):
         if not hmac.compare_digest(request.headers.get('X-CSRF-Token',''), row['csrf']):
             raise HTTPException(403, 'Session verification failed. Refresh and try again.')
+    if store.settings.guest_workspace:
+        from app.guest import permitted
+        if not permitted(request):
+            raise HTTPException(403, 'The public guest demo does not allow account, team, policy or authority changes')
     mfa = request.app.state.mfa
     if mfa.required(row) and not row['mfa_verified'] and request.url.path not in (
         '/api/auth/me','/api/auth/logout','/api/auth/mfa/status',
