@@ -50,7 +50,7 @@ Public guest access
 
 Open https://refundguard-production-11cb.up.railway.app. Enter guest@refundguard.example and RefundGuard-Guest-2026!, then select Sign in.
 
-The guest demo uses a separate synthetic workspace and local simulation. You can create purchases and cases, run the workflow, view mock messages and balances, search demo documents, and export demo evidence. All visitors share this demo.
+The guest demo uses a separate synthetic workspace. It runs either local simulation or, when the hosting team enables it, a live AI model within a shared daily budget; Settings shows which, and how much budget is left. You can create purchases and cases, run the workflow, view mock messages and balances, search demo documents, and export demo evidence. All visitors share this demo.
 
 Guest access does not include team administration, password/MFA changes, policy publication, profile editing, supervisor decisions or the authority switch. The public guest password is fixed.
 
@@ -137,6 +137,8 @@ Open Knowledge base to read source titles, versions and customer scope. Under Te
 
 The guest demo uses local lexical vector retrieval. Uploaded workspace policies in the individual-account workspace require a different authorized reviewer before they become active.
 
+In the guest demo, open a case and use Upload a PDF to this case to attach a synthetic PDF with selectable text (up to 140 KB). Its passages become evidence the next time the case runs. A PDF with recognized hidden instructions is refused and the attempt is logged. When the guest demo runs a live model, the passages reach it as evidence; in local simulation, uploads test the input checks only.
+
 Inspect and export outcomes
 
 Open Assurance to review Refund outcomes and the Audit timeline. Run control checks runs an isolated check suite and leaves customer balances unchanged. Its results describe those checks, not the outcome of every request.
@@ -181,7 +183,7 @@ Open Knowledge base > Add document. Select Workspace policy, enter the title and
 
 Import Drive case files
 
-When a project Drive folder is configured, Supervisors and Administrators can import PDFs into a case's Case files and assign an active Member to them. The assigned Member, Supervisors and Administrators can search the passages in the case view. The guest demo does not offer case files. See the [Drive case files guide](drive-case-files.md) for the demo workflow.
+When a project Drive folder is configured, Supervisors and Administrators can import PDFs into a case's Case files and assign an active Member to them. The assigned Member, Supervisors and Administrators can search the passages in the case view. The guest demo offers PDF upload instead of Drive import (see chapter 05). See the [Drive case files guide](drive-case-files.md) for the demo workflow.
 
 Pause or restore authority
 

@@ -11,8 +11,15 @@ for current deployment status.
 
 Set `PUBLIC_GUEST_ENABLED=true` to enable guest login on the main sign-in page; `/guest/` redirects there. It uses
 `/data/public-guest/refundguard.sqlite3`, a distinct cookie, published demo login,
-and local simulation with zero provider budget. The private root workspace
-retains its own accounts, database and model settings. Disable the flag and
+and local simulation with zero provider budget by default. The private root workspace
+retains its own accounts, database and model settings.
+
+To let guests reach the live model, also set `GUEST_LIVE_MODEL=true`. Guests then use the
+workspace's `OPENAI_API_KEY` server-side (never shown to them) with their own spending
+ledger, capped by `GUEST_DAILY_BUDGET_USD` (default 0.50) and `GUEST_MONTHLY_BUDGET_USD`
+(default 3.00). These caps are in addition to the private workspace's budget, so the most
+the key can spend is the sum of both. When the guest cap runs out, guest cases go to review
+until the next UTC day. Anyone with the published guest password can use this budget. Disable the flag and
 redeploy to remove public guest access; guest records remain on the volume.
 
 Use the repository root as build context and `deploy/Dockerfile` as the build file.

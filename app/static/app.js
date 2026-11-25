@@ -61,7 +61,14 @@ async function caseFilesPanel(cid, details) {
         <div class="field"><label for="case-file-query">Search imported case files</label>
         <input id="case-file-query" name="query" maxlength="2000" required></div>
         <button class="btn small" type="submit">Find passages</button><div class="form-error"></div>
-      </form><div id="case-file-search-results" aria-live="polite"></div>` : '<p>No Drive PDFs imported for this case.</p>'}
+      </form><div id="case-file-search-results" aria-live="polite"></div>` : '<p>No case PDFs yet.</p>'}
+    ${details.can_upload ? `
+      <form id="case-file-upload-form" data-id="${esc(cid)}" class="stack">
+        <div class="field"><label for="case-file-upload">Upload a PDF to this case</label>
+        <input id="case-file-upload" name="file" type="file" accept="application/pdf,.pdf" required>
+        <small>Public test workspace: a PDF with selectable text, up to 140 KB. Its passages become evidence when this case runs. Use synthetic content only.</small></div>
+        <button class="btn small" type="submit">Upload PDF</button><div class="form-error"></div>
+      </form>` : ''}
     ${controls}
   </section>`;
 }
@@ -76,6 +83,17 @@ async function submitCaseFileForm(form, values) {
       `<div class="search-result"><h4>${esc(row.title)}</h4><p>${esc(row.content)}</p></div>`
     ).join('') || empty('No case file passages found.');
     return;
+  }
+  if (form.id === 'case-file-upload-form') {
+    const file = values.file;
+    if (!file || !file.size) throw Error('Choose a PDF file.');
+    if (file.size > 140 * 1024) throw Error('Choose a PDF up to 140 KB.');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const result = await api(endpoint + 'upload', 'POST', {filename: file.name, content_base64: btoa(binary)});
+    toast(result.imported ? 'PDF added to case files' : 'This PDF is already in the case files');
+    return showCase(form.dataset.id);
   }
   if (form.id === 'case-file-assignment-form') {
     await api(endpoint + 'assignment', 'PUT', {user_id: values.user_id || null});
@@ -139,11 +157,12 @@ async function reviewMessage(cid,mid){
 }
 
 async function guestSettingsPage(){
-  const [me,profiles]=await Promise.all([api('/auth/me'),api('/profiles')]);
+  const [me,profiles,usage]=await Promise.all([api('/auth/me'),api('/profiles'),api('/usage')]);
   state.profiles=profiles;
+  const live=me.mode!=='Local simulation';
   $('#content').innerHTML=heading('Public guest workspace','Your synthetic test records.','Shared guest data is separate from the private team workspace.', '<button class="btn primary" data-action="new-order">Add purchase</button>')+
-    notice('This public demo uses local simulation and synthetic money/email. Guest passwords, team access, policies and authority cannot be changed. All visitors share this demo; use a team prefix for your purchases. For individual Customer accounts or staff-only controls, ask the hosting team for an invitation to the private workspace.')+
-    '<section class="panel panel-pad"><h2>Model and scope</h2><p>Generation: '+esc(me.mode)+'. No provider API calls. Refund limits: $100 per transaction and $500 per UTC week in this guest workspace.</p></section><div class="spacer"></div>'+
+    notice((live?'This public demo calls a live AI model within a shared daily budget, with synthetic money/email. ':'This public demo uses local simulation and synthetic money/email. ')+'Guest passwords, team access, policies and authority cannot be changed. All visitors share this demo; use a team prefix for your purchases. For individual Customer accounts or staff-only controls, ask the hosting team for an invitation to the private workspace.')+
+    '<section class="panel panel-pad"><h2>Model and scope</h2><p>Generation: '+esc(me.mode)+'. '+(live?'Shared guest AI budget: '+money(Math.round(usage.daily_accounted_usd*100))+' of '+money(Math.round(usage.daily_limit_usd*100))+' used today; when it runs out, cases go to review until the next UTC day.':'No provider API calls.')+' Refund limits: $100 per transaction and $500 per UTC week in this guest workspace.</p></section><div class="spacer"></div>'+
     '<section class="panel panel-pad"><h2>Synthetic customer balances</h2><div class="table-scroll"><table><thead><tr><th>Customer</th><th>Mock bank reference</th><th>Balance</th></tr></thead><tbody>'+
     profiles.map(p=>'<tr><td>'+esc(p.name)+'</td><td>'+esc(p.bank_ref)+'</td><td>'+money(p.balance_cents)+'</td></tr>').join('')+'</tbody></table></div></section>'+footer();
 }

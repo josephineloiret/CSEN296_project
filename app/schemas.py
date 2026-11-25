@@ -146,6 +146,15 @@ class SearchInput(Input):
 class CaseFileImport(Input):
     source: str = Field(min_length=1, max_length=400)
 
+class CaseFileUpload(Input):
+    filename: str = Field(min_length=1, max_length=160)
+    # Base64 PDF; the app-wide 200 KB request limit bounds the decoded size further.
+    content_base64: str = Field(min_length=8, max_length=200000)
+    @field_validator('filename')
+    @classmethod
+    def file_name(cls, value):
+        return one_line(value)
+
 class CaseFileAssignment(Input):
     user_id: str | None
     @field_validator('user_id')

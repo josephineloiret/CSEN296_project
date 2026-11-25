@@ -39,10 +39,34 @@ stores sanitized, searchable text and local lexical vectors in SQLite.
 
 Case file assignments apply only to this document feature. Existing customer
 records remain governed by the app's current role permissions. Case file text
-does not enter the shared Knowledge index, external embeddings, or automated
-refund, email, and reporting workflows. The staff-facing Records Agent search
-uses local lexical ranking in either model mode. Sanitization redacts known
+does not enter the shared Knowledge index or external embeddings. Search uses
+local lexical ranking in either model mode. Sanitization redacts known
 synthetic bank references and rejects recognized unsafe instructions.
+
+### Case files in the automated workflow
+
+When a staff member runs a case, the Records Agent adds up to three case-file
+passages to the refund evidence, if that person may read the case files
+(admin, supervisor, or the assigned member). An unassigned member's run uses
+the normal evidence only.
+
+- **Untrusted evidence.** Passages are labeled `case_file`. They cannot grant
+  eligibility, change the amount or caps, or authorize a refund; application
+  controls still decide those. The model may cite a passage by its document ID.
+- **Recheck at run time.** Every stored passage for the case is rechecked
+  before the model is called. A recognized instruction holds the case for human
+  review, even if it was imported before the patterns changed.
+- **Amounts.** A dollar figure in a PDF does not become an amount the model
+  may state. A recommendation quoting one is held for review.
+- **Traces.** Workflow traces are visible to all staff, so they record only the
+  passage's document ID, title and chunk number, never its text.
+- **Provider.** In OpenAI mode the selected passages, after redaction, are
+  sent to the model provider with the rest of the evidence. In local mode no
+  model is called and the recommendation cites the case file by ID.
+- **Residual risk.** A model rationale can paraphrase passage text. Rationales
+  are visible to staff and appear in the sent decision notice (finding RT-F04).
+  Detection is pattern-based and misses reworded or other-language instructions
+  (finding RT-F01); eligibility and caps remain the real control.
 
 This is a snapshot import. Moving, editing, deleting, or revoking access to the
 original in Drive does not change an existing RefundGuard snapshot. Use a new
@@ -51,3 +75,20 @@ database and backup retention policies.
 
 References: [Download Drive files](https://developers.google.com/workspace/drive/api/guides/manage-downloads)
 and [Drive folder sharing](https://developers.google.com/workspace/drive/api/guides/manage-sharing).
+
+## Public guest workspace
+
+Other teams test through the public guest login. The guest workspace never
+receives the Drive folder ID or service-account key, and it cannot reach the
+Drive import or assignment routes. Instead, a guest can upload a PDF (up to the
+app's 200 KB request limit, at most five per case) to a guest case. The upload
+goes through the same text extraction, sanitization and instruction checks as
+a Drive import, assigns the guest to the case files, and is used as evidence
+when the case runs. A rejected PDF records a `records.case_file_rejected`
+event with a hash of the text, never the text itself.
+
+By default the guest workspace runs local simulation, so a guest upload tests
+the import checks and the run-time recheck only. With `GUEST_LIVE_MODEL=true`
+(see the Railway guide), passages that pass those checks reach the live model
+as evidence, within the guest budget, so testers can see how it responds. All guests share one account and one
+workspace, so uploads are visible to other testers.

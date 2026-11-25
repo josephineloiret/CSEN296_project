@@ -1,4 +1,6 @@
 """RefundGuard browser application. Run with uvicorn app.main:app from project/."""
+import base64
+import binascii
 from datetime import datetime, timezone, timedelta
 import hmac
 import json
@@ -25,7 +27,7 @@ from app.config import Settings
 from app.drive_files import DriveFileError, DriveFiles
 from app.knowledge import Knowledge
 from app.schemas import (CASE_ID, CUSTOMER_ID, DOCUMENT_ID, LINK_ID, USER_ID, AcceptInvite,
-                         ActiveInput, CaseInput, CaseFileAssignment, CaseFileImport, CaseFileSearch, DocumentInput, Invitation, Login, MessageInput,
+                         ActiveInput, CaseInput, CaseFileAssignment, CaseFileImport, CaseFileSearch, CaseFileUpload, DocumentInput, Invitation, Login, MessageInput,
                          OrderInput, PasswordInput, ProfileInput, SearchInput, Setup,
                          SupervisorInput, PolicyReview, AcceptTeamInvite, InviteToken, MessageReviewInput)
 from app.mfa import MFA, router as mfa_router
@@ -491,6 +493,19 @@ def create_app(settings=None):
             raise DriveFileError('Drive case file import is unavailable.', 503)
         throttle(store, 'case-file-import:'+user['id'], 15, 3600)
         return case_files.import_pdf(cid, body.source, user)
+
+    @app.post('/api/cases/{cid}/files/upload')
+    def upload_case_file(cid: str, body: CaseFileUpload, user=Depends(current_user)):
+        # Public testers attempt case-file injection here instead of the private Drive folder.
+        if not settings.guest_workspace:
+            raise HTTPException(404, 'Not found')
+        get_case(cid, user)
+        throttle(store, 'case-file-upload:'+user['id'], 20, 3600)
+        try:
+            data = base64.b64decode(body.content_base64, validate=True)
+        except (binascii.Error, ValueError):
+            raise DriveFileError('Upload a PDF file.') from None
+        return case_files.upload_pdf(cid, body.filename, data, user)
 
     @app.post('/api/cases/{cid}/files/search')
     def search_case_files(cid: str, body: CaseFileSearch, user=Depends(current_user)):

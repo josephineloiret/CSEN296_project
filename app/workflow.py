@@ -87,7 +87,7 @@ class Workflow:
                 self.store.event('orchestrator','refund.supervisor_review_required',case_id,
                                  run_id=run_id,reason=limit_reason)
                 return self.store.case(case_id,user)
-            self._run(case,run_id)
+            self._run(case,run_id,user)
         except Exception as exc:
             # Preserve actual execution even if a later model/email operation fails.
             ledger = self.store.one('SELECT decision_json FROM ledger WHERE case_id=?',(case_id,))
@@ -105,7 +105,7 @@ class Workflow:
                 self.store.event('orchestrator','workflow.timeout',case_id,executed=bool(ledger))
         return self.store.case(case_id,user)
 
-    def _run(self, case, run_id):
+    def _run(self, case, run_id, user):
         from app.execution import remaining
         remaining()
         cid = case['id']
@@ -123,9 +123,15 @@ class Workflow:
             self.email(cid,'outbound','We received '+cid,'Your synthetic refund request has been received and assigned for review.')
         incoming=self.store.all("SELECT * FROM rg_messages WHERE case_id=? AND direction='inbound' ORDER BY created_at DESC LIMIT 5",(cid,))
         customer_content='\n'.join(message_for_model(self.store,m) for m in reversed(incoming))[-12000:]
-        context = self.records.retrieve(cid,customer_content+' refund '+case['reason_code'])
+        query = customer_content+' refund '+case['reason_code']
+        context = self.records.retrieve(cid,query)
+        # Drive passages join the evidence only if the running user may read them.
+        context = context + self.records.case_file_evidence(cid,query,user)
         remaining()
-        emit('Records','retrieve',{'sources':context,'customer_id':case['customer_id'],'embedding':self.models.embedding_kind})
+        # Traces are visible to all staff, so case-file text stays out of them.
+        sources = [{key:item[key] for key in ('source_id','kind','title','chunk_no')}
+                   if item.get('kind')=='case_file' else item for item in context]
+        emit('Records','retrieve',{'sources':sources,'customer_id':case['customer_id'],'embedding':self.models.embedding_kind})
         eligible,eligibility_reason = self.store.eligibility(cid)
         recommendation=self.refunds_agent.recommend(case,customer_content,context,eligible,eligibility_reason)
         remaining()

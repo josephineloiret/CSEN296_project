@@ -29,6 +29,10 @@ class Settings:
     team_invite_expires: float = 0
     public_guest_enabled: bool = False
     guest_workspace: bool = False
+    # Off by default: when on, public guests spend the team's API key within these caps.
+    guest_live_model: bool = False
+    guest_daily_budget_usd: str = '0.50'
+    guest_monthly_budget_usd: str = '3.00'
 
     drive_folder_id: str = ""
     drive_service_account_json: str = field(default="", repr=False)
@@ -59,12 +63,16 @@ class Settings:
                    team_invite_hash=os.getenv('TEAM_INVITE_TOKEN_HASH',''),
                    team_invite_expires=float(os.getenv('TEAM_INVITE_EXPIRES','0')),
                    public_guest_enabled=os.getenv('PUBLIC_GUEST_ENABLED','false').lower() in ('true','1'),
+                   guest_live_model=os.getenv('GUEST_LIVE_MODEL','false').lower() in ('true','1'),
+                   guest_daily_budget_usd=os.getenv('GUEST_DAILY_BUDGET_USD','0.50'),
+                   guest_monthly_budget_usd=os.getenv('GUEST_MONTHLY_BUDGET_USD','3.00'),
                    drive_folder_id=os.getenv('DRIVE_CASE_FILES_FOLDER_ID', '').strip(),
                    drive_service_account_json=os.getenv('DRIVE_CASE_FILES_SERVICE_ACCOUNT_JSON', ''))
 
     def validate(self):
-        if self.guest_workspace and (self.provider != 'local' or self.api_key):
-            raise ValueError('The public guest workspace must use local simulation without a provider key')
+        if self.guest_workspace and (self.provider != 'local' or self.api_key) and not self.guest_live_model:
+            raise ValueError('The public guest workspace must use local simulation without a provider key '
+                             'unless GUEST_LIVE_MODEL is enabled')
         if self.team_invite_hash:
             import re
             import math
@@ -87,7 +95,7 @@ class Settings:
             raise ValueError('OPENAI_API_KEY is required for AI_PROVIDER=openai')
         if self.reasoning_effort not in ('none','low','medium'):
             raise ValueError('OPENAI_REASONING_EFFORT must be none, low or medium')
-        for name in ('daily_budget_usd','monthly_budget_usd'):
+        for name in ('daily_budget_usd','monthly_budget_usd','guest_daily_budget_usd','guest_monthly_budget_usd'):
             try:
                 value=Decimal(getattr(self,name))
                 if not value.is_finite() or value < 0:

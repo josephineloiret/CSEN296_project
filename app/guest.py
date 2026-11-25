@@ -68,9 +68,16 @@ class GuestRoutingMiddleware:
 
 
 def settings_for_guest(settings):
+    # Live only when explicitly enabled and the team workspace has a working key.
+    # The guest database keeps its own spending ledger, capped by the guest budget,
+    # so public testing cannot use up the team workspace's budget.
+    live = settings.guest_live_model and settings.provider == 'openai' and bool(settings.api_key)
+    model = ({'provider': 'openai', 'api_key': settings.api_key,
+              'daily_budget_usd': settings.guest_daily_budget_usd,
+              'monthly_budget_usd': settings.guest_monthly_budget_usd} if live else
+             {'provider': 'local', 'api_key': '', 'daily_budget_usd': '0', 'monthly_budget_usd': '0'})
     return replace(settings, database=Path(settings.database).parent/'public-guest'/'refundguard.sqlite3',
-                   provider='local', api_key='', daily_budget_usd='0', monthly_budget_usd='0',
-                   audit_directory='', mfa_encryption_key='', team_invite_hash='',
+                   **model, audit_directory='', mfa_encryption_key='', team_invite_hash='',
                    team_invite_expires=0, public_guest_enabled=False, guest_workspace=True,
                    railway=False, drive_folder_id='', drive_service_account_json='')
 
@@ -105,5 +112,5 @@ def permitted(request):
     if request.method == 'POST':
         return path in {'/api/auth/logout', '/api/orders', '/api/cases',
                         '/api/knowledge/search', '/api/benchmarks/run'} or bool(
-                            re.fullmatch(r'/api/cases/RG-[0-9A-F]{8}/(?:run|messages)', path))
+                            re.fullmatch(r'/api/cases/RG-[0-9A-F]{8}/(?:run|messages|files/upload|files/search)', path))
     return False

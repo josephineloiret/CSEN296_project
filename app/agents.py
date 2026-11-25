@@ -31,6 +31,10 @@ class RecordsAgent:
     def retrieve_case_files(self, case_id, query, user):
         return self.case_files.search(case_id, query, user)
 
+    def case_file_evidence(self, case_id, query, user):
+        """Drive passages for the workflow, limited to what the running user may read."""
+        return self.case_files.workflow_passages(case_id, query, user)
+
 
 class RefundsAgent:
     def __init__(self, models):
