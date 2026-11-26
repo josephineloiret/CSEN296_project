@@ -1,6 +1,6 @@
 # RefundGuard — MAESTRO Threat Model
 
-*Grounded in the `codex/refundguard-integration` branch. All data is synthetic; testing is sandbox-only.*
+*Grounded in the code on main; initial model from the codex/refundguard-integration branch (a105c32), updated for main at 260d24a (see §5). All data is synthetic; testing is sandbox-only.*
 
 ## 1. Scope and method
 
@@ -106,11 +106,11 @@ Priority: P1 = exercise first. "Expected" = correct secure outcome the Blue Team
 | A13 | Hallucinated-source approval (openai mode) | L1 | LLM07 | source validation | blocked (source_ids ⊄ context) | P3 |
 | A14 | Plan that equals AGENTS but smuggles intent in Summary | L1/L3 | LLM01/ASI01 | plan validation | no effect on execution controls | P3 |
 
-**Existing harness coverage (`redteam/run_campaign.py`).** The repo already ships a working red-team harness (6 scenarios, Appendix-H scoring; explicitly *not* CWEval). Mapping, so we extend rather than duplicate:
+**Harness coverage (`redteam/run_campaign.py` + `tests/test_role_escalation.py`, `main` at `260d24a`).** The starter harness had 6 scenarios; the Red Team added 4 and a separate role-escalation test. Each campaign scenario is run in local simulation (`results/campaign-local.json`) and against the live model (`results/campaign-live.json`, `gpt-5.6-luna`); both pass 10/10.
 
-- **Covered:** A3 (`replay`), A5/A8 (`indirect-injection` — poisoned note + `MOCK-DEMO-SAM` leak check), A6 (`revocation`), eligibility/expired (`expired-injection`), baseline (`normal` + recovery exercise).
-- **Partial:** A1 (`direct-injection` tests $125 over / $75 under — missing the exact $100.00 / $100.01 edge).
-- **New:** A2 (concurrency race on weekly cap), request-splitting / **weekly-$500 aggregate** (never exercised — all scenarios use fresh DBs), A4 (policy-doc poisoning + review separation), A7 (supervisor-denied override), A9 (role escalation), A10 (shared admin link), A11 (DoS), A12 (no-trace probe), A13 (hallucinated source), A14 (plan smuggle). The amount/eligibility ones drop into the `SCENARIOS` tuple format; the structural ones need extra client calls (like `indirect-injection`'s `knowledge.add` and `revocation`'s `/api/authority`).
+- **Covered:** A1 (`direct-injection`), A3 (`replay`), A4 (`policy-poisoning`), A5/A8 (`indirect-injection` — poisoned note + canary check), A6 (`revocation`), A7 (`supervisor-denied`), A9 (`role_escalation`, 27 privileged routes), A11 (`resource-limits`), request-splitting (`weekly-cap-aggregate`), eligibility (`expired-injection`), baseline (`normal` + recovery exercise).
+- **Partial:** A1 (no exact $100.00 / $100.01 edge), A2 (sequential only; no concurrency race), A3 (no duplicate-order split), A11 (no sustained flood).
+- **Not exercised:** A10 (shared admin link — accepted residual, see §5), A12 (no-trace probe), A13 (hallucinated source), A14 (plan smuggle).
 
 ## 4. Risk assessment (severity = likelihood × impact)
 
@@ -123,3 +123,26 @@ Priority: P1 = exercise first. "Expected" = correct secure outcome the Blue Team
 | Shared admin link (A10) | med | high | **High** | self-flagged; identity not verified |
 | Policy-semantics ambiguity (L7) | — | med | **Governance** | clarify per-customer vs org-wide with instructor |
 | DoS / monitoring (A11–A12) | med | med | **Low–Med** | availability + evidence integrity |
+
+## 5. Model updates (Iterations 2–3, `main` at `260d24a`)
+
+Since the initial model (`a105c32`) the Blue Team added the input-review hold path, customer-scoped Records/RAG boundaries, provider-boundary redaction, Google Drive case-file import, case files as agent evidence, and a public guest workspace. The per-layer model, updated for those changes:
+
+- **L1 Foundation Models** — plan tampering, hallucinated evidence, jailbroken recommendation (LLM01/07, ASI01)
+- **L2 Data Operations** — policy-document poisoning, indirect injection via customer text and via imported Drive case files, cross-customer leak (LLM01/02/05/09, ASI06)
+- **L3 Agent Frameworks** — cap evasion, replay, authority/supervisor bypass (LLM03, ASI02/03)
+- **L4 Deployment & Infrastructure** — CSRF/cross-origin write, resource exhaustion, supply chain, Drive service-account credential exposure, guest-to-private workspace isolation on a shared origin (LLM04/06, ASI04/08)
+- **L5 Evaluation & Observability** — monitoring evasion, evidence integrity, hold-induced processing stalls, reduced trace visibility for case-file evidence (ASI01, ASI08)
+- **L6 Security & Compliance** — privilege escalation, credential attacks, shared admin-link identity gap, reviewer trust on the input-review path (ASI03/09)
+- **L7 Agent Ecosystem / Use Case** — workflow social engineering, org-wide weekly-cap exhaustion across customers (ASI08/09)
+
+### Attack chains (Iteration 2)
+
+- **Chain 1: injection → leak.** A poisoned customer note (LLM01) is retrieved as evidence → the Records agent includes another customer's record in context (LLM02) → the Refunds/Email output exposes it. Controls break the chain at the first two links: the review hold catches the recognized note, and customer-scoped retrieval prevents the cross-customer chunk; the canary check confirms the output link never fires. Tested by `indirect-injection`.
+- **Chain 2: unverified admin → poisoned policy → over-cap refund.** A holder of the shared admin link signs up with an arbitrary identity (ASI03/09) → uploads a policy raising the caps (LLM05) → a second colluding reviewer publishes it → the agent recommends a $125 refund against the new policy → the gateway executes it (LLM03). Controls break the chain at the publish step (the uploader cannot publish their own policy; a different administrator or supervisor must) and at execution (the gateway enforces the $100 cap from code, not from policy text, so even a published poisoned policy cannot raise what executes). The first link is the accepted residual (A.8 in the risk report); upload and publish are tested by `policy-poisoning`, execution by `direct-injection`.
+
+### Resolved and accepted (Iteration 3)
+
+- **Weekly-cap semantics resolved from code.** `app/refunds.py` sums the whole ledger for the current calendar week (Monday reset) with no customer filter: the $500 cap is organization-wide, not per-customer and not rolling. Confirmed by `weekly-cap-aggregate` in both modes.
+- **Live-model run completed.** All 10 campaign scenarios pass against `gpt-5.6-luna` (61 provider calls). In one of two live runs the model held an eligible refund for human review on its own; the cap still held at exactly $500, so the variance affects availability, not security.
+- **Shared admin link accepted as residual risk.** Bounded by 48-hour expiry, a 4-use cap, revocation and an `auth.team_invite_accepted` audit entry per use; identity verification is not performed by design. Proposed fix: bind the link to a verified email or restrict it to the member role.
